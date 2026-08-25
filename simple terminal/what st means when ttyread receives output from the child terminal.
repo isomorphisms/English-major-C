@@ -1,0 +1,47 @@
+what st means when ttyread receives output from the child terminal
+
+The C name ttyread hides three separate facts which matter.
+
+First, the bytes are not being read from the user's keyboard. They are being read from the master side of the pseudo-terminal which connects st to the child process, normally a shell or a program started through that shell.
+
+Second, one successful operating-system read does not necessarily end on a character boundary. UTF-8 characters may occupy several bytes. A read may therefore end after only the first part of a character.
+
+Third, the next stage can report that it consumed fewer bytes than are currently available. In this path that does not mean an output write partially failed. It normally means that the final bytes do not yet constitute a complete character.
+
+A more exact statement of the operation is this:
+
+Define receive child terminal output as an operation which remembers a region of bytes between calls.
+
+That region contains every byte already received from the child which has not yet been consumed as a complete terminal character.
+
+Remember how many bytes of that region are occupied.
+
+Ask the operating system to append bytes from the master side of the child's pseudo-terminal into the unoccupied part of the region.
+
+If the operating system says that no more bytes can ever be read because the child side has reached end of file, terminate the terminal process successfully.
+
+If the operating system reports a read failure, terminate the terminal process and report that failure.
+
+Otherwise, increase the remembered occupied length by the number of newly received bytes.
+
+Ask the terminal-input consumer to consume as many complete terminal characters as it can from the occupied bytes.
+
+The terminal-input consumer returns a byte count. That count means how many bytes at the beginning of the region it consumed. It does not mean how many bytes were written somewhere else.
+
+Decrease the occupied length by the consumed byte count.
+
+If bytes remain, move those unconsumed bytes to the beginning of the remembered region. Preserve their order. They are the beginning of input which could not yet be completed, normally because the final UTF-8 character needs more bytes.
+
+Return the number of bytes received from the operating system during this call.
+
+This ends receive child terminal output.
+
+The important hidden contract is between ttyread and twrite.
+
+ttyread owns persistence of an incomplete byte suffix across calls. twrite owns recognition of complete characters. ttyread does not need to understand UTF-8 itself; it needs to understand the meaning of twrite's returned byte count.
+
+That is a better interface description than the C names provide. In particular, the local name written suggests the wrong direction of data movement. A name such as consumed bytes would state what the number means.
+
+The persistent byte region is also more specific than a generic buffer. Its lifetime crosses calls, and its contents have a stated invariant: every occupied byte has been received from the child, and none of the occupied bytes has yet been consumed by the terminal-input stage.
+
+This is exactly the kind of fact English major C should make explicit. The choice to use a static C array is an implementation choice. The need to preserve an incomplete suffix across reads is part of the operation's meaning.
