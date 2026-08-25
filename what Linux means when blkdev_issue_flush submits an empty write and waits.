@@ -1,0 +1,71 @@
+Source under discussion:
+
+https://github.com/torvalds/linux/blob/66498c75b4f8017f62d720d9b59675bdf3abce91/block/blk-flush.c#L463-L477
+
+The short answer
+
+This function asks Linux’s block layer to finish the storage device’s earlier acknowledged writes in storage which is intended to survive loss of power. It waits for the block layer to report success or failure. It transfers no file data.
+
+What a data vector is here
+
+Vector is unfortunate inherited jargon. It has nothing to do with a mathematical vector. A Linux bio_vec describes one contiguous range of physical memory: a page, a byte offset within that page, and a byte count. A block input-output request which reads or writes file data can carry a list of these memory ranges.
+
+This request carries no memory ranges and no data bytes. The null table and zero maximum count passed to bio_init arrange that empty payload. Saying “no vectors and zero payload length” merely repeats structure-field terminology. The useful statement is: no bytes are being transferred between memory and the storage device.
+
+What preflush means
+
+REQ_PREFLUSH is an ordering requirement attached by the caller to a block request. It is not a thing called a preflush, and the storage device did not ask for it.
+
+For a request which also carries data, the requirement means that writes which the device reported complete earlier must reach nonvolatile storage before the new data operation begins. This request carries no data, so there is no later payload before which to flush. The empty request is the block layer’s conventional way to ask only for the cache commitment.
+
+The caller of blkdev_issue_flush imposes the requirement. A filesystem can do this because it is about to report that an operation such as fsync has made earlier writes durable. The block layer interprets the requirement. A device driver translates it into the command understood by the particular storage device. If the device does not advertise a volatile write cache, the block layer may report completion without issuing a hardware command because there is no volatile device state which it believes needs committing.
+
+Who receives the address
+
+The physical storage device does not receive the address of the bio record.
+
+submit_bio_wait receives an address referring to a request description in kernel memory. It places a completion notification and completion callback in that same description, marks the request synchronous, and passes its address to submit_bio. submit_bio gives it to the Linux block-device layer. The block layer reads the device field, finds the corresponding request queue or device submission function, and eventually invokes the appropriate driver.
+
+The address lets these kernel functions refer to and update one shared request description without copying it. Completion can happen later, so the description must remain valid until completion. This helper waits before returning, which keeps its local request region alive for that interval.
+
+The driver may give a device DMA addresses for data buffers in an ordinary read or write. There are no data buffers in this request.
+
+What waiting means
+
+submit_bio_wait first arranges a completion event so that a very fast completion cannot be missed. It submits the request, then blocks the calling kernel task until the completion callback signals that event. It converts the final block status into zero for reported success or a negative Linux failure number.
+
+Reported success is a contract boundary. The kernel has not inspected the physical medium. It trusts the block layer, driver, controller, and device to honor the advertised cache semantics.
+
+The useful types in this function
+
+The argument is not merely a pointer. It is the address of a live kernel record identifying one block device and its route into the block layer.
+
+The local bio is not merely an object. It is a writable request region whose layout and alignment are dictated by the target Linux kernel and whose address must remain valid until completion.
+
+REQ_OP_WRITE is an operation category. In this empty request it does not mean that bytes will be written.
+
+REQ_PREFLUSH is an ordering and durability requirement, not another integer and not another operation.
+
+The payload is a collection of memory regions. This particular collection is empty.
+
+Completion is an event.
+
+The return is a success-or-failure status represented by a C int. Treating it as an arbitrary integer loses its purpose.
+
+A first ordinary-English rendering
+
+A function which asks one block device to make its earlier acknowledged writes survive loss of volatile device memory, and waits for the reported result.
+
+The caller supplies device address 1. Device address 1 shall be the address at which a live Linux block-device record begins.
+
+Provide a writable region with the size and alignment required by the target Linux kernel for one block-submission record. Call the beginning of this region request address 1. The compiler may choose the address. Do not reuse the region before this function answers.
+
+At request address 1, prepare a block-submission record addressed to the device identified by device address 1. The request transfers no bytes. Require every write which that device reported complete before this request to reach storage intended to retain data without power before this request reports completion.
+
+Give request address 1 to the Linux block layer. Wait until the block layer reports that request complete.
+
+If the reported block status means success, answer zero. Otherwise answer the corresponding negative Linux failure number.
+
+An open lifecycle question
+
+The documentation beside bio_init says that caller-provided request records must later be passed to bio_uninit. Nearby synchronous helpers do so. The current blkdev_issue_flush returns immediately after submit_bio_wait without an explicit bio_uninit. Configuration-dependent association state makes this worth tracing, but this document does not yet claim that it is a kernel bug. Expanding the short C function made the question visible.
