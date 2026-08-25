@@ -1,0 +1,51 @@
+simple terminal
+
+Source: st, the suckless simple terminal.
+
+This study is based on upstream st at commit 04ce0d643ed17793803e8516f4c9a5b13b93c400, dated 29 June 2026.
+
+Goals page:
+https://st.suckless.org/goals/
+
+Source:
+https://git.suckless.org/st/
+
+Pinned upstream commit:
+https://git.suckless.org/st/commit/04ce0d643ed17793803e8516f4c9a5b13b93c400.html
+
+Why this belongs here
+
+st is deliberately small, but it is not a toy. It sits at a useful boundary between a child process, a pseudo-terminal, a byte stream, Unicode decoding, terminal control sequences, terminal state, and a graphical display. That makes it a good place to ask whether C names the work or merely names implementation pieces.
+
+The upstream goals also give us a clean boundary. st wants to be a working graphical terminal for terminal applications. It explicitly does not want to absorb session persistence, unlimited scrollback, URL launching, or the higher-level jobs of tmux and related programs. English major C should preserve that boundary rather than accidentally redesigning st into a terminal multiplexer.
+
+First path
+
+Start with the path by which output from the child process becomes terminal action:
+
+    child process
+        -> pseudo-terminal master
+        -> ttyread
+        -> twrite
+        -> UTF-8 decoding
+        -> tputc
+        -> control-sequence handling or screen state
+        -> drawing
+
+Do not translate the whole 2,700-line st.c file sentence by sentence. First identify what each stage is actually receiving, what it promises to produce, which state it owns, and what it deliberately leaves unfinished for the next stage.
+
+The first translation is ttyread because it is small enough to inspect completely and already exposes misleading vocabulary:
+
+- cmdfd is not merely a command file descriptor. At this point it is the master side of the pseudo-terminal connected to the child process.
+- buf is not merely a buffer. It holds newly received bytes together with any trailing bytes from the preceding call that did not yet make a complete UTF-8 character.
+- buflen is the number of bytes currently held in that region.
+- ret is the number of newly received bytes, or an end/error indication from read.
+- written is especially misleading. twrite does not write those bytes to an external destination. The returned number is how many input bytes twrite was able to consume as complete characters. Any unconsumed suffix is retained for the next read.
+
+That distinction matters. The operation is not "read and write." It is closer to "receive more bytes from the child, consume every complete terminal character now available, and retain an incomplete final character until more bytes arrive."
+
+Next
+
+After ttyread, expand twrite. Its job is to walk the available byte sequence, decode one complete character at a time when UTF-8 mode is active, optionally make control characters visible, and hand each resulting character to tputc. If the final bytes do not yet form a complete UTF-8 character, it stops before them so ttyread can retain them.
+
+tputc is the first larger knot. Its name suggests a character-placement operation, but it also participates in escape-string collection, control-code handling, terminal modes, character width, wrapping, and mutation of screen state. That is where the experiment should next ask whether several inherited API boundaries are actually one purpose or whether the distinctions are real and useful.
