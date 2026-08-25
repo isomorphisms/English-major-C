@@ -1,0 +1,39 @@
+English major C
+
+The name is a joke. The experiment is not.
+
+This repository asks what programming looks like when a program has to say, in ordinary and exact language, what it expects a processor, compiler, kernel, driver, or device to do.
+
+It is not C with each symbol replaced by a longer piece of C jargon. “Create an automatic integer object” is worse English than “int count” because it expands the phrase without explaining the value, representation, storage, lifetime, or decision being delegated. It is not a system which asks a language model to guess what unrestricted prose meant. It is not intended to prove that C is either good or bad.
+
+The immediate purpose is to shorten the path from an intended effect to useful machine action while making hidden choices visible. The first serious material comes from operating-system work: loading and writing memory, following addresses, moving bytes, submitting device work, waiting, ordering operations, reporting failures, and making data survive loss of power. The maximum function remains because it was the first joke, not because toy arithmetic is the research program.
+
+The repository is deliberately flat. Ordinary C keeps ordinary C filenames. A prose rendering receives a filename which says what the program does.
+
+Four words must not be collapsed.
+
+A value is a meaning such as five, an address, or failure.
+
+An encoding is a choice of bits or bytes which represent a value.
+
+An address identifies where a region begins.
+
+A region is storage which may be read or written for a stated length and lifetime.
+
+Remembering a value under a name does not claim that RAM exists. Writing an encoding into a region does. An address is not the region beginning there, and a region containing an encoded address is not the address it contains.
+
+Types are useful when they preserve distinctions required by the work. A byte count, a byte offset, a device address, a completion status, an operation, and an ordering requirement may all be represented by C integers or pointers, but they are not the same kind of thing. A useful type should say what values are possible, how they may be represented, which operations make sense, where the representation may live, who may observe or change it, how long it remains valid, and what completion or failure means. It need not invent mathematical structure which the work does not have.
+
+Every machine-relevant choice must be stated or deliberately delegated. “Use four bytes in least-significant-byte-first address order” states a choice. “Use the target kernel’s representation and report which representation was chosen” delegates one. Silent delegation disguised as a universal fact is the problem.
+
+Numbered references are acceptable English. Address 1 and status 37 are names, not claims that the numeric address is one or that thirty-six earlier statuses exist. “That address” may refer to the sole address introduced by the immediately preceding sentence. If two addresses could fit, compilation must fail instead of guessing. “The address above,” “said address,” and “the aforementioned location” add legalese without adding identity. A compiler may show the writer a version in which every pronoun has been replaced by its resolved numbered name.
+
+A parser may temporarily build a parse tree because clauses nest. The tree is scaffolding, not the program’s meaning. The durable representation should record meanings, encodings, addressable regions, reads, writes, calls, requests, waits, ordering requirements, failure priority, and choices delegated to the target. Call this an effect ledger or an operation plan. Machine code is an implementation of that plan. Every emitted load, store, shift, branch, call, and wait should be traceable either to a stated effect or to a stated implementation choice.
+
+There are two development branches.
+
+The real-systems-first branch reads small Linux kernel paths and explains what their nouns and verbs actually mean before attempting to parse the prose.
+
+The parse-the-first-paragraph branch implements the smallest honest parser for the original maximum paragraph. Its purpose is only to prove that ordinary sentences can be recognized mechanically and translated to C. It is not allowed to dictate the later language.
+
+A later direction should converge the results: retain the real effects discovered by expanding existing systems code, discard inherited categories which do not help, combine operations whose API boundaries only obscure one purpose, and lower the resulting language to inspectable machine work.
