@@ -1,0 +1,1 @@
+Define maximum as a function that accepts two integers named left and right and returns an integer. If left is greater than right, return left. Otherwise, return right. This ends the definition of maximum.
