@@ -1,0 +1,43 @@
+what st means when twrite consumes terminal bytes
+
+The C name twrite suggests that this operation writes terminal output somewhere. In the path from the child process toward the screen, that is not its main meaning.
+
+Its input is a region containing bytes received from the child process. Its result is the number of leading bytes it successfully consumed. Its repeated action is to turn the next complete encoded character into one terminal character and pass that character to the next stage.
+
+A more exact statement of the operation is this:
+
+Define consume terminal bytes as an operation which receives:
+
+- a region of input bytes,
+- the number of bytes in that region which are available to consume, and
+- a choice saying whether otherwise nonprinting control characters should be rendered visibly.
+
+Begin with zero bytes consumed.
+
+While unconsumed bytes remain, determine how many bytes belong to the next complete character.
+
+If the terminal is using UTF-8, ask the UTF-8 decoder to inspect the unconsumed suffix.
+
+If the decoder says that the available suffix does not yet contain a complete character, stop. Do not consume any byte belonging to that incomplete character.
+
+Otherwise, remember the decoded Unicode value and the number of bytes which encoded it.
+
+If the terminal is not using UTF-8, interpret the next byte as one character value and say that this character occupies one byte.
+
+If visible control-character rendering was requested and the decoded value is a control character, transform that value into the visible control notation used by st, except for newline, carriage return, and tab where st preserves their ordinary terminal meaning.
+
+Pass the resulting character value to the operation which interprets one terminal character.
+
+Increase the consumed byte count by the number of input bytes which formed that character.
+
+Repeat.
+
+Return the consumed byte count.
+
+This ends consume terminal bytes.
+
+The most important boundary is the incomplete-character case. The UTF-8 decoder can say, in effect, "these bytes might begin a valid character, but more bytes are required before I can decide." consume terminal bytes responds by stopping before those bytes. The caller then preserves them and appends later input.
+
+That makes the returned number part of a cross-call protocol. It is not a generic success count. It identifies the exact prefix which may be forgotten because every byte in that prefix has already been converted into terminal-character work.
+
+The next operation, tputc, is named as though it places one character on the screen. That description is too small. It receives one decoded character from this stage, but that character may instead change parser state, extend an escape sequence, invoke a control operation, change terminal mode, alter cursor state, or eventually place a glyph. The next English major C pass should therefore start by renaming the purpose before expanding its implementation.
