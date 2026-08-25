@@ -1,0 +1,87 @@
+Source under discussion:
+
+https://github.com/torvalds/linux/blob/66498c75b4f8017f62d720d9b59675bdf3abce91/mm/filemap.c#L762-L796
+
+The short answer
+
+This function asks the file’s page-cache machinery to begin writing modified cached pages which overlap an inclusive byte range. It waits for writes already begun in that range, then reports either the immediate writeback failure or a delayed failure recorded for this file handle.
+
+It does not by itself promise that the storage device has committed the bytes to storage which survives loss of power.
+
+What the supplied values mean
+
+file is the address of a live Linux file record. It is not the file’s bytes and it is not a disk address.
+
+lstart and lend are byte numbers within the file. The final byte number is included. They are offsets, not lengths and not memory addresses.
+
+file->f_mapping follows the file record to another address. That address begins the kernel record which manages the file’s cached pages and knows which filesystem-specific method can write them.
+
+The C type loff_t tells the compiler how to represent the two byte numbers. It does not distinguish a starting byte from a final byte, state that the final byte is inclusive, or prevent either from being confused with some other signed quantity. Those facts live outside the C type.
+
+What “needs writeback” means here
+
+The helper named mapping_needs_writeback currently tests whether the mapping contains any page-cache pages. It does not first prove that one of those pages is dirty. A more honest reading is “writeback might be needed or might already be in progress.”
+
+If the mapping contains no cached pages, there is nothing for this path to start or await.
+
+What begins when data is written
+
+filemap_fdatawrite_range asks the mapping’s writeback machinery to begin writing dirty cached pages which intersect the requested file-byte range. The filesystem and block layer decide how those pages become device requests. Some writes can have been submitted before the function discovers and reports a later failure.
+
+The immediate answer is remembered as the first status. Remembering a status does not require writing it to RAM; the compiler may keep it in a register, replace it with control flow, or eliminate it.
+
+Why it sometimes waits after failure
+
+An answer such as no-space-remains does not prove that no writes began. Part of the range may already be in flight. The function therefore waits for writes already begun even when starting the complete range reported many kinds of failure.
+
+Input-or-output failure receives special treatment: the function deliberately does not perform this wait after that status. The surrounding kernel comment describes it as potentially indicating a worse failure such as a bug. The code records the exception; understanding whether every caller wants that policy is a separate review question.
+
+What delayed failure means
+
+Writeback often finishes after the call which started it. Linux records failures in the mapping. Each open file handle keeps a cursor saying which recorded failure it has already acknowledged.
+
+file_check_and_advance_wb_err reads a failure which occurred since this file handle’s previous acknowledgement and advances that cursor. This is not merely “check an integer.” It observes and changes per-file error-reporting state.
+
+The direct failure from beginning writeback has priority. A delayed failure becomes the answer only when the direct status was success.
+
+How this differs from a device-cache flush
+
+This function deals with the kernel page cache and completion of page writeback. A storage device can acknowledge those writes while retaining data in a volatile internal cache. A separate device-cache commitment, such as blkdev_issue_flush, can still be necessary before a filesystem may report durable success.
+
+An ext4 fsync path composes at least three different actions which are casually called flushing: write cached file data, commit filesystem journal metadata, and conditionally require the storage device to commit its volatile cache. Treating all three as one verb destroys the reason for their ordering.
+
+The useful types in this function
+
+File address 1 identifies a live file record for a bounded lifetime.
+
+Mapping address 1 identifies the page-cache and writeback record reached through that file.
+
+Start byte number 1 and final byte number 1 are file offsets with different roles. The final one is inclusive.
+
+First status is either success or the immediate reason that beginning writeback failed.
+
+Delayed status is either success or a previously unacknowledged asynchronous writeback failure associated with this file handle.
+
+Waiting is an effect and an ordering boundary, not a value.
+
+Acknowledging the delayed failure changes state even though it does not write file data.
+
+A first ordinary-English rendering
+
+A function which starts writing a file range from page-cache memory and waits for the writes already begun.
+
+The caller supplies file address 1, start byte number 1, and final byte number 1. File address 1 shall be the address at which a live Linux file record begins.
+
+Read the mapping address held in the file record beginning at file address 1. Call the address so read mapping address 1.
+
+If final byte number 1 precedes start byte number 1, answer success.
+
+Remember success as first status.
+
+If the mapping record beginning at mapping address 1 contains at least one page-cache page, ask that mapping’s write method to begin writing every dirty page intersecting bytes start byte number 1 through final byte number 1, including both ends. Remember its answer as first status.
+
+Unless first status means input-or-output failure, wait for every write already in progress for that range to finish. Waiting is still required after a failure such as no-space-remains because part of the range may already have been submitted.
+
+Read any writeback failure which has occurred since this file handle last acknowledged one. Mark that failure acknowledged by this file handle. Call the result delayed status.
+
+If first status is failure, answer first status. Otherwise answer delayed status.
