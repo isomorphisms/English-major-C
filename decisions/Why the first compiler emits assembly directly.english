@@ -71,3 +71,9 @@ for the alternative mechanisms considered. Its requirement to record
 an ICK compiler revision is not a requirement for English Major C:
 for this program, record the English Major C compiler revision,
 generated assembly and the separately declared assembler/linker.
+
+RELATED INSPECTION WORK.
+The companion note "Trace a machine instruction back to the choice that produced it.english"
+asks for the exact rule that produced each instruction, alternative choices,
+the source edit that changes the rule, and evidence after all later stages.
+Its ComputerScience cross-reference is https://github.com/walnut-burgundy/computer-science/pull/82

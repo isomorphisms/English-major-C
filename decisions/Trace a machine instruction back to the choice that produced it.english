@@ -1,0 +1,78 @@
+TRACE A MACHINE INSTRUCTION BACK TO THE CHOICE THAT PRODUCED IT.
+
+Status: navigational research note, 2026-10-24.
+This note does not add a permitted T32 operation, alter the English-to-Thumb
+compiler, or claim execution on a physical processor.
+
+THE QUESTION.
+
+Given a specific instruction, memory access, branch or data table, identify
+the exact earlier transformation or rule that produced it. A description of
+what the instruction means is not yet an explanation of why this particular
+implementation chose it.
+
+English Major C works from the machine upward. ComputerScience works from
+semantic intent toward a selected architecture. The two perspectives meet
+when we can recover both the bottom-up trace and the top-down decision history.
+
+WHERE TO BEGIN HERE.
+
+The current narrowly scoped direct English-to-T32 experiment is indexed in
+README.md and examples/unknown-entry-sum/README.md.
+
+The decision to emit assembly directly for this initial experiment is
+recorded in "Why the first compiler emits assembly directly.english".
+No general-purpose optimizer, universal intermediate representation or ICK
+translation step is implied.
+
+The exact meaning of the execution index is in
+architecture/armv7-a/t32/Given a machine - objects and execution.english.
+The permitted subset of native operations is in
+architecture/armv7-a/t32/All and only these initial operations are permitted.english.
+That permission grant does not prove that a particular machine or Android ART
+run executed any of the described encodings.
+
+RECONSTRUCT THE PATH.
+
+For each observed instruction, recover:
+
+1. The target and exact instruction bytes, decoding and execution-index address.
+2. The complete source and generated assembly, with source-to-instruction
+   correspondence where possible.
+3. The named compiler stage, file, function and revision that chose this form.
+4. Other available forms and the rule that selected or rejected them.
+5. How to edit the rule or disable or override it; state when no such control
+   exists.
+6. The independently observed output and the exact evidence that the changed
+   choice survived assembling, linking, loading and execution.
+
+Never infer a two-byte instruction merely from a nearby two-byte encoding.
+Never call a symbolic disassembly actual executed instructions without evidence
+from the corresponding native process. The current first compiler's status and
+acceptance limits remain unchanged.
+
+NEIGHBORING DECISION OWNERS.
+
+The ComputerScience lowering decision atlas is at
+https://github.com/walnut-burgundy/computer-science/pull/82
+and discusses representation choice, architecture selection, and the
+source-to-execution inspection contract.
+
+The Idriç semantics and one-step handoff note is at
+https://github.com/isomorphisms/Idric/pull/148
+and distinguishes intermediate compiler names from physical memory writes.
+
+The direct DEX backend's exact known decision locations are at
+https://github.com/isomorphisms/android-NDK/pull/31
+and include checking exported functions, lowering to DEX instructions and
+choosing DEX encoded widths.
+
+Android ART is a distinct later compiler/runtime. A DEX listing is not
+an ARMv7-A T32 listing. Reconstruct what ART did on the named target instead
+of attributing its machine instructions to the DEX emitter.
+
+PURPOSE.
+
+The record should let a human locate, understand, change and inspect each
+decision. Choosing the fastest possible implementation automatically is
+optional and secondary.

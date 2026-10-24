@@ -126,3 +126,7 @@ The original [maximum-function example](examples/a%20function%20which%20answers%
 uses a different, higher-level prose grammar and is outside this parser attempt.
 The bounded parser result does not independently qualify the architecture,
 compiler, translation, or Idriç experiments.
+
+## Finding the earlier lowering choice
+
+[Trace a machine instruction back to the choice that produced it](decisions/Trace%20a%20machine%20instruction%20back%20to%20the%20choice%20that%20produced%20it.english) connects the bottom-up English machine description to the [ComputerScience decision atlas](https://github.com/walnut-burgundy/computer-science/pull/82), the [Idriç compiler stages](https://github.com/isomorphisms/Idric/pull/148), and the [direct-DEX backend](https://github.com/isomorphisms/android-NDK/pull/31). This is documentation, not another compiler stage.
