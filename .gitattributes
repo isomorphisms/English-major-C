@@ -1,6 +1,6 @@
 # TSV trailing empty fields and exact binutils diagnostic spaces are evidence.
 *.idric linguist-language=Idris
-coverage/fortran/generated/** -whitespace
+_/coverage/fortran/generated/** -whitespace
 # Preserve the independent decoder snapshot byte-for-byte, including upstream spaces.
-fixtures/dex/sources/smali-Opcode.java -whitespace
-fixtures/dex/sources/** linguist-vendored
+_/fixtures/dex/sources/smali-Opcode.java -whitespace
+_/fixtures/dex/sources/** linguist-vendored

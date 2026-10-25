@@ -1,6 +1,0 @@
-# Optional ai-ci structural checks only; neither this suite nor the source checker approves prose semantics.
-tsv_header	DEX-INVENTORY-HEADER	architecture/dex/inventory.tsv	number,opcode,mnemonic,format,code_units,encoding,validity,minimum_version,valid_versions,english,reads,writes,execution_index,restrictions,exceptions,sources,related
-tsv	DEX-INVENTORY-SHAPE	architecture/dex/inventory.tsv	17	257
-tsv_header	DEX-SOURCE-HEADER	fixtures/dex/sources/manifest.tsv	id,kind,upstream_blob,revision,sha256,local_path,url
-tsv	DEX-SOURCE-SHAPE	fixtures/dex/sources/manifest.tsv	7	14
-contains	DEX-AUDIT-BOUNDARY	evidence/DEX-catalogue-audit.md	ai-ci acceptance: NOT_RUN

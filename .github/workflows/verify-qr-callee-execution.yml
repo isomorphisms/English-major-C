@@ -35,9 +35,9 @@ jobs:
       - name: Execute real calls and compare all integer and floating state
         run: |
           set -euo pipefail
-          node --check experiments/qr-callee/callee-state.mjs
-          node --check experiments/qr-callee/check-callee-execution.mjs
-          node experiments/qr-callee/check-callee-execution.mjs "$RUNNER_TEMP/qr-callee-evidence"
+          node --check _/experiments/qr-callee/callee-state.mjs
+          node --check _/experiments/qr-callee/check-callee-execution.mjs
+          node _/experiments/qr-callee/check-callee-execution.mjs "$RUNNER_TEMP/qr-callee-evidence"
           cat "$RUNNER_TEMP/qr-callee-evidence/receipt.json"
       - name: Retain exact source for independent reproduction
         if: always()

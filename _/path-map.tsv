@@ -1,0 +1,70 @@
+old_path	new_path
+examples/r-lm-native-x86-64/english-translation/Following the first actual QR call one memory operation at a time.english	x86/r-qr/english/Following the first actual QR call one memory operation at a time.english
+examples/r-lm-native-armv7-a32/english-concordance/How the real A32 machine prepares its first QR call.english	arm/a32/r-qr/english/How the real A32 machine prepares its first QR call.english
+examples/r-lm-native-x86-64/english-translation/Every recorded call and its missing machine boundary.english	x86/r-qr/english/Every recorded call and its missing machine boundary.english
+examples/r-lm-native-armv7-a32/english-concordance/What the recorded A32 machine actually contains.english	arm/a32/r-qr/english/What the recorded A32 machine actually contains.english
+examples/r-lm-native-x86-64/english-translation/What exists in this x86-64 machine execution.english	x86/r-qr/english/What exists in this x86-64 machine execution.english
+examples/a function which answers which of two given values is larger, written in English major C.	_/experiments/maximum/a function which answers which of two given values is larger, written in English major C.
+examples/r-lm-native-x86-64/english-translation/linked-executable.x86-64.instructions.english	x86/r-qr/english/linked-executable.x86-64.instructions.english
+examples/Eight Thumb bit operations translated until the first ungranted instruction.english	arm/thumb/listings/Eight Thumb bit operations translated until the first ungranted instruction.english
+examples/r-lm-native-armv7-a32/english-concordance/dqrdc2.armv7-a32.instructions.english	arm/a32/r-qr/english/dqrdc2.armv7-a32.instructions.english
+examples/r-lm-native-armv7-linux-hardfp-linked/linked-executable.armv7-hardfp.disasm.txt	arm/a32/r-qr/hardfp/linked-executable.armv7-hardfp.disasm.txt
+examples/r-lm-native-armv7-a32/english-concordance/dqrls.armv7-a32.instructions.english	arm/a32/r-qr/english/dqrls.armv7-a32.instructions.english
+examples/r-lm-native-armv7-a32/english-concordance/dqrsl.armv7-a32.instructions.english	arm/a32/r-qr/english/dqrsl.armv7-a32.instructions.english
+examples/A conditional branch chooses which exceptional instruction is next.english	arm/thumb/listings/A conditional branch chooses which exceptional instruction is next.english
+examples/r-lm-native-armv7-a32/softfp-execution/linked-executable.softfp.disasm.txt	arm/a32/r-qr/softfp/linked-executable.softfp.disasm.txt
+examples/One actual Thumb branch listing translated from the bottom upward.english	arm/thumb/listings/One actual Thumb branch listing translated from the bottom upward.english
+examples/r-lm-native-x86-64/english-translation/dqrdc2.x86-64.instructions.english	x86/r-qr/english/dqrdc2.x86-64.instructions.english
+examples/r-lm-native-x86-64/english-translation/dqrls.x86-64.instructions.english	x86/r-qr/english/dqrls.x86-64.instructions.english
+examples/r-lm-native-x86-64/english-translation/dqrsl.x86-64.instructions.english	x86/r-qr/english/dqrsl.x86-64.instructions.english
+examples/An address a load and a branch disagree about the same bytes.english	arm/thumb/listings/An address a load and a branch disagree about the same bytes.english
+examples/The same branch bytes acquire a condition from If Then state.english	arm/thumb/listings/The same branch bytes acquire a condition from If Then state.english
+examples/Actual wide Thumb multiple-word operations in long English.english	arm/thumb/listings/Actual wide Thumb multiple-word operations in long English.english
+experiments/qr-callee/ARM factorization before its first norm call.english	arm/a32/r-qr/ARM factorization before its first norm call.english
+experiments/qr-callee/x86 factorization before its first norm call.english	x86/r-qr/x86 factorization before its first norm call.english
+examples/One If Then block governs a short and a long instruction.english	arm/thumb/listings/One If Then block governs a short and a long instruction.english
+examples/r-lm-native-armv7-a32/softfp-execution/reference-blas/dnrm2.f90	fortran/blas/dnrm2.f90
+examples/r-lm-native-armv7-a32/softfp-execution/reference-blas/daxpy.f	fortran/blas/daxpy.f
+examples/r-lm-native-armv7-a32/softfp-execution/reference-blas/dcopy.f	fortran/blas/dcopy.f
+examples/r-lm-native-armv7-a32/softfp-execution/reference-blas/dscal.f	fortran/blas/dscal.f
+examples/r-lm-native-armv7-a32/softfp-execution/reference-blas/LICENSE	fortran/blas/LICENSE
+examples/r-lm-native-armv7-a32/softfp-execution/reference-blas/ddot.f	fortran/blas/ddot.f
+examples/Actual Thumb word transfers translated into English.english	arm/thumb/listings/Actual Thumb word transfers translated into English.english
+examples/r-lm-native-x86-64/linked-executable.x86-64.disasm.txt	x86/r-qr/linked-executable.x86-64.disasm.txt
+experiments/qr-entry/ARM entry before its first call.english	arm/a32/r-qr/ARM entry before its first call.english
+experiments/qr-entry/x86 entry before its first call.english	x86/r-qr/x86 entry before its first call.english
+examples/r-lm-native-armv7-a32/dqrdc2.armv7-a32.disasm.txt	arm/a32/r-qr/dqrdc2.armv7-a32.disasm.txt
+examples/r-lm-native-armv7-a32/dqrls.armv7-a32.disasm.txt	arm/a32/r-qr/dqrls.armv7-a32.disasm.txt
+examples/r-lm-native-armv7-a32/dqrsl.armv7-a32.disasm.txt	arm/a32/r-qr/dqrsl.armv7-a32.disasm.txt
+examples/r-lm-native-x86-64/dqrdc2.x86-64.disasm.txt	x86/r-qr/dqrdc2.x86-64.disasm.txt
+examples/r-lm-native-x86-64/dqrls.x86-64.disasm.txt	x86/r-qr/dqrls.x86-64.disasm.txt
+examples/r-lm-native-x86-64/dqrsl.x86-64.disasm.txt	x86/r-qr/dqrsl.x86-64.disasm.txt
+examples/r-lm-native-armv7-linux-hardfp-linked	_/captures/r-lm-native-armv7-linux-hardfp-linked
+examples/r-lm-native-x86-64/model_example.R	fortran/model_example.R
+examples/r-lm-native-x86-64/COPYING-R.txt	fortran/COPYING-R.txt
+examples/r-lm-native-x86-64/dqrdc2.f	fortran/dqrdc2.f
+examples/r-lm-native-x86-64/dqrls.f	fortran/dqrls.f
+examples/r-lm-native-x86-64/dqrsl.f	fortran/dqrsl.f
+examples/unknown-entry-sum-x86-64	x86/addition
+examples/r-lm-native-armv7-a32	_/captures/r-lm-native-armv7-a32
+examples/r-lm-native-x86-64	_/captures/r-lm-native-x86-64
+examples/unknown-entry-sum	arm/thumb/addition
+architecture/armv7-a/t32	arm/thumb
+examples/autogenerated	_/autogenerated
+english-discrete.ipkg	_/english-discrete.ipkg
+examples/maximum.c	_/experiments/maximum/maximum.c
+architecture/dex	dex
+english-a32.ipkg	_/english-a32.ipkg
+decompilation	_/decompilation
+examples/dex	dex
+experiments	_/experiments
+AGENTS.md	_/AGENTS.md
+decisions	_/decisions
+coverage	_/coverage
+evidence	_/evidence
+fixtures	_/fixtures
+research	_/research
+tests	_/tests
+tools	_/tools
+docs	_/docs
+ci	_/ci

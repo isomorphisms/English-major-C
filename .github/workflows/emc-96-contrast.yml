@@ -14,7 +14,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Execute synthetic evaluator controls, not model inference
-        run: node --test research/model-interpretation/*.test.mjs
+        run: node --test _/research/model-interpretation/*.test.mjs
   discrete-idric:
     if: github.event.repository.private == false
     runs-on: ubuntu-24.04
@@ -34,7 +34,7 @@ jobs:
         env:
           IDRIC_HOME: ${{ github.workspace }}/.idric-host
           EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node research/model-interpretation/qualify-discrete.mjs
+        run: node _/research/model-interpretation/qualify-discrete.mjs
 # Standard public runners only. No paid endpoint, larger runner, upload-artifact,
 # cache action, LFS, model weight mirror, schedule, or automatic merge is used.
 # Compiler bootstrap host prerequisites follow canonical Idric's own entrypoint.
@@ -52,4 +52,4 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Run actual publisher weights on a standard public CPU runner
-        run: node research/model-interpretation/ci-model-smoke.mjs '${{ matrix.model }}'
+        run: node _/research/model-interpretation/ci-model-smoke.mjs '${{ matrix.model }}'

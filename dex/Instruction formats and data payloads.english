@@ -1,0 +1,118 @@
+INSTRUCTION FORMATS AND DATA PAYLOADS.
+
+Scope: portable standard DEX. The following twenty-six formats are used
+by standard instructions. Unused opcode slots have nominal format 10x in
+the opcode tables; that does not authorize execution. 00x is a pseudo-format
+for unused values in the separate general format reference, not a length.
+
+Letters name operand fields, not a compulsory grammar for English operations.
+Every displayed group is one sixteen-bit code unit. In B:A:op the high nibble
+is B, the next nibble is A, and the low byte is op. An AA field occupies an
+entire high byte. ØØ means eight zero bits. A field mentioned as signed is
+sign-extended from its encoded width. Register and reference indices and
+argument counts are unsigned. A wide register operand names its first word.
+
+10x, one unit: ØØ:op. No operands.
+12x, one unit: B:A:op. A and B are four-bit register indices.
+11n, one unit: B:A:op. A is a four-bit register; B is a signed four-bit literal.
+11x, one unit: AA:op. A is an eight-bit register index.
+10t, one unit: AA:op. A is a signed eight-bit branch displacement.
+20t, two units: ØØ:op AAAA. A is a signed sixteen-bit branch displacement.
+22x, two units: AA:op BBBB. A is an eight-bit register; B is sixteen-bit.
+21t, two units: AA:op BBBB. A is an eight-bit register; B is a signed
+sixteen-bit branch displacement.
+21s, two units: AA:op BBBB. A is an eight-bit register; B is a signed
+sixteen-bit literal extended to the destination value width.
+21h, two units: AA:op BBBB. A is an eight-bit register or pair start.
+For const/high16 place B in result bits 31 through 16 and zero bits 15
+through 0. For const-wide/high16 place B in bits 63 through 48 and zero
+bits 47 through 0. Neither interpretation fills the low bits with sign bits.
+21c, two units: AA:op BBBB. A is an eight-bit register or pair start;
+B is a sixteen-bit index in the table identified by this opcode.
+23x, two units: AA:op CC:BB. A, B and C are eight-bit register indices.
+22b, two units: AA:op CC:BB. A and B are eight-bit registers;
+C is a signed eight-bit literal extended to thirty-two bits.
+22t, two units: B:A:op CCCC. A and B are four-bit registers;
+C is a signed sixteen-bit branch displacement.
+22s, two units: B:A:op CCCC. A and B are four-bit registers;
+C is a signed sixteen-bit literal extended to thirty-two bits.
+22c, two units: B:A:op CCCC. A and B are four-bit registers or pair starts;
+C is a sixteen-bit index in the opcode's type or field table.
+30t, three units: ØØ:op AAAA-low AAAA-high. A is a signed thirty-two-bit
+branch displacement assembled from the following two code units.
+32x, three units: ØØ:op AAAA BBBB. A and B are sixteen-bit register indices.
+31i, three units: AA:op BBBB-low BBBB-high. A is an eight-bit register or
+pair start. B is thirty-two bits, sign-extended for const-wide/32 and copied
+without numerical conversion for const.
+31t, three units: AA:op BBBB-low BBBB-high. A is an eight-bit register.
+B is a signed thirty-two-bit displacement to the matching data payload.
+31c, three units: AA:op BBBB-low BBBB-high. A is an eight-bit register;
+B is an unsigned thirty-two-bit string index.
+35c, three units: A:G:op BBBB F:E:D:C. A is a four-bit WORD count,
+restricted to zero through five. Select C, then D, E, F, G, stopping after
+A words. Every selected register has a four-bit index. B is a sixteen-bit
+type, method or call-site index, as specified by the opcode. Unselected
+register fields do not contribute arguments. They do not permit a sixth word.
+3rc, three units: AA:op BBBB CCCC. A is an eight-bit WORD count;
+B is a sixteen-bit index; C is the sixteen-bit first register. Select exactly
+A consecutive words starting at C. The interval must fit in the frame.
+45cc, four units: A:G:op BBBB F:E:D:C HHHH. The list and count are as
+in 35c; B is a sixteen-bit method index and H a sixteen-bit prototype index.
+4rcc, four units: AA:op BBBB CCCC HHHH. The interval is as in 3rc;
+B is a sixteen-bit method index and H a sixteen-bit prototype index.
+51l, five units: AA:op BBBB-low BBBB-next BBBB-next BBBB-high.
+A is an eight-bit pair start; B is the entire sixty-four-bit constant.
+
+PACKED SWITCH PAYLOAD, IDENTIFIER 0x0100.
+
+At an even code-unit offset, store identifier 0x0100, an unsigned
+sixteen-bit entry count, a signed thirty-two-bit first key, then that many
+signed thirty-two-bit target displacements. The length is four plus twice
+the entry count, in code units. Key number j is first_key plus j. The key
+sequence must remain in the signed thirty-two-bit range; wrapping the last
+key to a negative integer is not a permitted key sequence. A match uses
+the corresponding displacement added to the SWITCH instruction's index.
+If the tested signed integer lies outside that consecutive key interval,
+the switch falls through. Zero entries give no match.
+
+SPARSE SWITCH PAYLOAD, IDENTIFIER 0x0200.
+
+Store identifier 0x0200, an unsigned sixteen-bit entry count, that many
+signed thirty-two-bit keys, and then that many signed thirty-two-bit target
+displacements. The keys must be strictly increasing, without duplicates.
+This is two separate arrays, not an interleaving of each key with its target.
+The length is two plus four times the entry count, in code units. A matching
+key uses the target at the same array index, relative to the switch
+instruction. A missing key, including in an empty table, falls through.
+
+ARRAY DATA PAYLOAD, IDENTIFIER 0x0300.
+
+Store identifier 0x0300, an unsigned sixteen-bit element width in BYTES,
+an unsigned thirty-two-bit element count, then the element bytes in order.
+Portable primitive element widths are one, two, four or eight bytes.
+The width must agree with the actual primitive array component type.
+No object references may be embedded by this mechanism. The total length
+is four plus the ceiling of width times count divided by two, in CODE UNITS.
+If the byte count is odd, the final byte merely pads the final code unit;
+it does not supply an extra array element. A fill copies exactly the stated
+elements to array indices zero through count minus one. An array may be
+larger; the remaining elements are unchanged. All size arithmetic used to
+validate the file must reject overflow rather than wrap an extent.
+
+The payload alignment, identifier, extent and branch-target checks belong
+to decoding/verification. Nullness and an actual array shorter than the
+payload count are runtime conditions. Payload data has no sequential
+executable meaning and never supplies an implicit return instruction.
+
+NONPORTABLE FORMATS.
+
+20bc, 22cs, 35ms, 35mi, 3rms and 3rmi describe suggested or historical
+linked/optimized formats. Their appearance in the format reference does
+not allocate a standard portable opcode. See "Optimized instructions are
+a different namespace.english" and the separate foreign decoder snapshot.
+
+SOURCE REFERENCES.
+
+F, Formats; B, the three payload format sections; D, code_item;
+C, static constraints on payloads and control flow. See sources/manifest.tsv
+under _/fixtures/dex for independent instruction-table provenance.

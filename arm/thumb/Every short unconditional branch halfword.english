@@ -1,0 +1,403 @@
+EVERY SHORT UNCONDITIONAL BRANCH HALFWORD.
+
+English Major C: precise source-level contract for one COMPLETE
+ARMv7-A Thumb instruction-decoding region.
+Status: architectural description, complete finite encoding inventory,
+and independent temporary assembler/decoder checks. NOT a complete
+ARMv7-A T32 ISA, a verified compiler, an interpreter, or execution
+on an ARM CPU.
+
+SCOPE AND SOURCE OF AUTHORITY.
+
+Exactly every sixteen-bit halfword with numerical value from
+hexadecimal E000 through hexadecimal E7FF, inclusive, belongs to
+the short, immediate, T32 B T2 instruction encoding family.
+No other halfword belongs to this finite region.
+
+The normative reference is ARM DDI 0406C.d, publication ID040418,
+Chapter A6.2's sixteen-bit Thumb top-level decoder and
+section A8.8.18 "B", encoding T2 (page A8-332).
+Official source:
+https://documentation-service.arm.com/static/5f8daeb7f86e16515cdb8c4e
+
+The complete 2048-row enumeration belongs at
+  _/fixtures/armv7-a-t32-unconditional-branch-halfwords.tsv
+relative to the repository root. Its data rows are NOT ARM
+instructions executed by merely reading a TSV file.
+They encode a claim that can be checked independently.
+
+This instruction family maps to EXISTING English Major C
+operation number 42, whose long English name begins:
+"Replace the execution index with the named legal T32
+instruction address without modifying the link register."
+
+This work does not admit a NEW operation and does not
+change the current 72-operation closed permission grant.
+It narrows the verified encoding forms inside operation 42.
+
+PART ONE. WHAT THE 2048 DIFFERENT BIT PATTERNS MEAN.
+
+A T32 T2 short immediate B has exactly sixteen bits.
+The five most significant bits, bits 15 through 11,
+are, in order, one, one, one, zero, zero.
+In binary, this fixed prefix is 11100.
+The other eleven bits, numbered 10 through 0,
+encode an immediate quantity called imm11.
+
+Every possible sequence of eleven bits occurs:
+  00000000000 through 11111111111.
+There are 2^11, or precisely 2048, possible imm11
+values, and all are accounted for by the finite table.
+
+The numerical halfword value is 0xE000 + imm11.
+The first halfword of this instruction does NOT
+begin with a T32 prefix 11101, 11110 or 11111.
+It is a COMPLETE TWO-BYTE instruction. No second
+halfword is consumed as part of this encoding.
+
+The prefix and the imm11 field contain NO general-purpose
+register number, NO LR destination, NO comparison result,
+NO flag-changing option, and NO operand indicating that
+a linker should automatically make this a subroutine call.
+
+The instruction's PC-relative displacement is a
+TWO'S-COMPLEMENT signed twelve-bit number obtained
+from the eleven-bit imm11 followed by one binary zero.
+It is not the unsigned numerical value imm11 multiplied
+by two for every input.
+
+Define the signed mathematical integer value of imm11:
+  If imm11 is less than 1024, signed_imm11 = imm11.
+  If imm11 is 1024 or greater, signed_imm11 = imm11 - 2048.
+
+Define the BYTE displacement:
+  branch_displacement_bytes = 2 * signed_imm11.
+
+That displacement is an even integer between
+negative 2048 and positive 2046, inclusive.
+For every possible value, the target can be computed
+from the exact instruction's address and architectural
+PC operand. This describes encoder reach relative
+to the PC base, not a promise that the target page
+is mapped or that an intended instruction begins there.
+
+PART TWO. THE EXECUTION INDEX AND PROGRAM-COUNTER OPERAND.
+
+Let the current T32 instruction begin at virtual byte
+address A, which must identify a halfword-aligned
+instruction boundary in the checked English program.
+
+The architectural PC-operand base for this encoding is A+4,
+NOT A+2, even though the current instruction is only TWO
+bytes long.
+
+The branch target is:
+  TARGET = (A + 4 + branch_displacement_bytes)
+           subject to the architecture's address-width
+           and valid-target requirements.
+
+For ordinary execution OUTSIDE an IT block, a valid
+B T2 is taken without using the current N/Z/C/V flags.
+The execution index becomes TARGET. It does not
+first execute the halfword at A+2 and THEN branch.
+
+It preserves R0 through R12, SP, LR, and the
+arithmetic condition flags N, Z, C, V.
+The instruction does not load from data memory,
+write data memory, save LR, or automatically
+change the instruction set to A32.
+
+The next instruction is fetched from the target
+ONLY if the applicable execution state and memory
+permissions make that fetch legal. Branching to
+unmapped or non-executable memory is not permission
+to run the bytes stored there.
+
+A source label represents a promised instruction
+entry point. The encoded signed displacement is
+the actual native restriction. If a source label
+cannot be reached by the chosen encoding, the
+compiler/linker must either choose a separately
+permitted sequence/encoding or reject the lowering.
+A veneer introduced by a linker is itself actual
+machine code and requires its own retained bytes
+and English translation.
+
+PART THREE. IMPORTANT NUMERICAL BOUNDARIES.
+
+Take A=0x00001000 as an illustrative instruction address.
+
+Hexadecimal E000 has imm11 equal to zero,
+therefore displacement zero, and target 0x00001004.
+A zero displacement does NOT mean next sequential
+address 0x00001002.
+
+Hexadecimal E001 has imm11 equal to one,
+therefore displacement positive two, target 0x00001006.
+
+Hexadecimal E3FF has imm11=1023, the largest
+nonnegative signed eleven-bit integer,
+therefore displacement positive 2046,
+and target 0x00001802.
+
+Hexadecimal E400 has imm11=1024, interpreted
+as negative 1024 after sign extension,
+therefore displacement negative 2048,
+and target 0x00000804.
+
+Hexadecimal E7FD has imm11=2045, interpreted
+as signed negative three, displacement
+negative six, and target 0x00000FFE.
+
+Hexadecimal E7FE has imm11=2046, interpreted
+as negative two, displacement negative four,
+and target A itself, 0x00001000. Under
+ordinary successful execution it branches
+back to the SAME machine instruction.
+An interrupt, exception or later external
+observer still requires its own architecture
+and environment rules; do not infer absolute
+physical nontermination merely from this encoding.
+
+Hexadecimal E7FF has imm11=2047, signed
+negative one, displacement negative two.
+Its TARGET is 0x00001002, numerically identical
+to the usual sequential successor for a
+two-byte instruction. Outside IT, the branch
+is nevertheless TAKEN; the matching address
+is not evidence that no branch operation
+was executed.
+
+The table's target addresses are calculated
+for the assumed A=0x1000, not measured physical
+processor addresses. They are illustrative
+virtual-byte-address arithmetic.
+
+PART FOUR. THE WORD "UNCONDITIONAL" NEEDS ITS PREMISES.
+
+The T2 encoding has no condition-code field.
+But ARM DDI 0406C.d A8.8.18 explicitly permits
+B T2 OUTSIDE or LAST INSIDE an IT block.
+
+OUTSIDE an IT block:
+  The branch's normal effect is unconditional.
+  Its target is the architectural next instruction.
+
+INSIDE an IT block, as the LAST slot:
+  The ITSTATE supplies the governing condition.
+  If that condition holds, the branch effect occurs
+  and the execution index becomes its encoded target.
+  If the IT condition fails, the branch's normal
+  control-transfer effect is suppressed. The processor
+  advances past the TWO-BYTE B T2 instruction and
+  updates ITSTATE in the architecture-defined way.
+  Both the condition and the width remain observable
+  parts of the faithful English translation.
+
+INSIDE an IT block, but NOT in its last slot:
+  The exact B T2 form is architecturally UNPREDICTABLE.
+  The checked source profile must REJECT it.
+  Merely calling B an "unconditional branch" must not
+  excuse its placement early in IT.
+
+The different T1 conditional branch in D000..DDFF
+is not permitted in IT at all, even in the final
+slot. The same assembler-like words B or BEQ
+do not confer identical native encoding rights.
+
+An independent LLVM disassembly diagnostic produced:
+  0xE000 outside IT: printed as "b" with offset zero;
+  0xE000 as the one and last slot of IT EQ:
+      printed as "beq" with offset zero.
+
+This is NOT a mutation of instruction bytes.
+The B T2 encoding 0xE000 has not changed.
+The disassembler uses preceding ITSTATE to
+display the EFFECTIVE condition of the same bytes.
+A source decoder that inspects 0xE000 alone must
+state "B T2 encoded without its own condition field";
+a full execution trace must additionally state
+whether it is currently governed by ITSTATE.
+
+PART FIVE. A COMPLETE ENCODING PARTITION.
+
+Each integer imm11 from 0 through 2047 appears
+EXACTLY ONCE in the committed TSV, in ascending order.
+No two distinct imm11 values produce the same raw
+sixteen-bit halfword in E000..E7FF.
+
+The partition by imm11 sign is:
+  E000..E3FF: 1024 nonnegative imm11 interpretations.
+  E400..E7FF: 1024 negative imm11 interpretations.
+Together the two sets contain 2048 encodings.
+
+All 2048 are allocated to the SAME architectural
+B T2 instruction form, but a complete successful
+program still needs a legal IT position,
+a valid executable instruction target and the
+specified processor/environment state.
+
+The table therefore makes two distinct claims:
+  1. Exactly these 2048 raw halfwords are allocated
+     to this native decoding class.
+  2. The current English profile grants operation 42
+     for a particular halfword only when its actual
+     execution context, destination and other
+     architecture restrictions are satisfied.
+
+It would be false to translate "all 2048 are allocated"
+as "all 2048 always execute correctly in every program."
+
+PART SIX. RETAIN EVERY IMPORTANT ALTERNATIVE.
+
+Alternative A. Use a narrow two-byte B T2 branch.
+Benefit: two instruction bytes and a simple
+signed PC-relative displacement.
+Cost: limited displacement reach; a branch
+can disrupt sequential instruction fetching.
+
+Alternative B. Use a four-byte T32 B T4 form
+where supported and permitted by an extended exact
+encoding contract. Benefit: much longer reach.
+Cost: longer instruction, different immediate
+bit assembly and branch encoding restrictions.
+The T2 permission does NOT authorize T4.
+
+Alternative C. Use the T1 sixteen-bit conditional
+B after a compare. Benefit: makes the predicate
+explicit within the branch encoding itself.
+Cost: signed displacement only -256..+254
+bytes, no placement in IT, and different
+flag-dependent execution semantics.
+
+Alternative D. Use B T2 as the last instruction
+inside a legal IT block. Benefit: conditional
+branch effect without a condition-coded branch
+halfword. Cost: IT state and a preceding IT
+instruction; cannot be used in an earlier slot.
+
+Alternative E. Invert a condition and alter
+fall-through layout so the ordinary next instruction
+executes in the frequently observed case.
+Benefit: possible instruction locality.
+Cost: exact source/target relocation and a
+performance result dependent on the actual core.
+
+Alternative F. Use register-indirect BX with
+a value representing an instruction target.
+Benefit: indirect control transfer and state
+selection. Cost: source register state,
+Thumb-state tag and security/entry constraints.
+Not equivalent to immediate B and cannot
+be silently introduced by a friendly name.
+
+Alternative G. Use table branches TBB/TBH
+for bounded multiway dispatch.
+Benefit: a table of DATA can determine a branch target.
+Cost: extra memory read, bounds and target integrity
+obligations. Not a direct B encoding.
+
+Alternative H. Allow a linker to introduce
+a veneer for an out-of-range target.
+Benefit: can preserve programmer intent
+despite local branch range.
+Cost: additional actual machine instructions;
+their bytes and effects must be disclosed,
+not omitted from bottom-up translation.
+
+Alternative I. Rely on physical prediction,
+prefetch, cache or speculation to hide
+a branch's cost. Possible advantage depends
+on the actual CPU. No architectural
+instruction-count argument establishes
+performance or speculative side effects.
+The architectural next index remains the
+branch-selected target under the declared
+execution model.
+
+Alternative J. Use no branch because the
+numerical B T2 target equals sequential A+2
+(E7FF) and replace it with NOP.
+The resulting architectural next ADDRESS may
+match outside IT, but the two are not
+necessarily identical in control-flow,
+exception behavior, IT context, or performance.
+This is a proposed optimization requiring
+a complete observation/equivalence contract,
+not an assumed identity of instructions.
+
+No candidate is accepted as universally
+faster based solely on these source descriptions.
+
+PART SEVEN. SOURCE AND DECODER EVIDENCE.
+
+A diagnostic written and executed on a Linux
+x86-64 host used clang 17.0.0, target
+armv7a-none-eabi with Thumb enabled, and
+llvm-objdump 17.0.0 with Thumb triple.
+
+Its assembly source used:
+    .syntax unified
+    .arch armv7-a
+    .thumb
+    .text
+    .thumb_func
+    all_e:
+and literal .hword directives listing
+every halfword E000..E7FF in increasing order.
+
+The resulting ELF32 little-endian ARM object
+contained those bytes in its text section.
+LLVM objdump decoded each as one two-byte
+B instruction. The diagnostic checked every
+printed halfword, byte address, signed
+immediate displacement and target against
+the independent bitfield formula above.
+
+There were 2048 decoder matches and ZERO
+unexplained mismatches. Those were not
+2048 ARM CPU executions; this was
+a foreign disassembler comparison.
+
+The associated evidence receipt documents
+the source/object/disassembly SHA256 digests,
+host tool versions and exact check boundaries.
+These source files are not proof that
+a first-party English Major C parser or
+semantic interpreter exists.
+
+PART EIGHT. ACCEPTANCE CASES THAT MUST BE MECHANICALLY REJECTED.
+
+1. Interpret an E400 imm11 as positive 1024
+   and branch FORWARD by 2048 bytes.
+2. Use current instruction address A rather than
+   PC operand A+4 as the displacement base.
+3. Interpret E000's zero immediate as sequential A+2.
+4. Treat E7FE as a branch to A+2 rather than A.
+5. Change LR when executing immediate B T2.
+6. Change N/Z/C/V when B T2 executes or is skipped.
+7. Treat E000 as a four-byte instruction.
+8. Decode the next halfword as part of E000.
+9. Execute B T2 when its enclosing IT condition is false.
+10. Allow a B T2 in a nonfinal IT slot.
+11. Forbid every B T2 in IT solely because
+    the distinct T1 conditional B is forbidden there.
+12. Treat E000 rendered "beq" by LLVM under IT
+    as if its raw bytes had become a D0xx encoding.
+13. Claim the target of an E7FF instruction is NOT
+    equal to A+2; conversely, claim that matching
+    numerical address proves no branch occurred.
+14. Declare an unmapped or non-executable target valid
+    because the immediate offset can represent it.
+15. Claim an out-of-range branch was directly encoded
+    in a narrow T2 halfword without a distinct
+    authorized expansion or linker instruction.
+16. Treat the 2048 classified forms as
+    the complete ARMv7-A T32 instruction set.
+
+The first classification/displacement checks have
+temporary diagnostic evidence. The complete
+execution-context, exception and target-memory
+cases remain pending independent AICI acceptance.
+
+END OF E000..E7FF COMPLETE DECODE REGION.
