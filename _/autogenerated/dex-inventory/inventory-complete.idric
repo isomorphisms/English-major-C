@@ -1,0 +1,14 @@
+module InventoryComplete
+
+%default total
+
+ordered_bytes_from : Number → List Number → Bool
+ordered_bytes_from expected [] = expected ≟ 256
+ordered_bytes_from expected (byte :: remaining) =
+  if expected < 256 && byte ≟ expected
+     then ordered_bytes_from (S expected) remaining
+     else False
+
+export
+contains_each_primary_opcode_once : List Number → Bool
+contains_each_primary_opcode_once bytes = ordered_bytes_from 0 bytes

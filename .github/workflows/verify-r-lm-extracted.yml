@@ -33,4 +33,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -B examples/r-lm-native-x86-64/verify_extracted.py --self-test
+          python3 -B _/captures/r-lm-native-x86-64/verify_extracted.py --self-test

@@ -1,0 +1,60 @@
+OPTIMIZED INSTRUCTIONS ARE A DIFFERENT NAMESPACE.
+
+The standard 256-row inventory describes portable DEX input. A reserved byte
+is not an instruction which the reader may execute as a harmless placeholder.
+An ART cache, VDEX file, Dalvik odex image or historical runtime revision
+may use a different instruction namespace. Its runtime version and container
+must be established before interpreting its bytes. The byte alone is not
+enough, even if an independent decoder has a familiar-looking name for it.
+
+The independently maintained dexlib2 Opcode.java snapshot under
+_/fixtures/dex/sources is the explicit historical evidence used here.
+Its ODEX_ONLY marker and API/ART-version maps must not be discarded.
+The portable catalogue does not grant these forms as standard instructions.
+
+HISTORICAL DALVIK OPTIMIZATIONS.
+
+The snapshot records volatile instance/static field accessor forms in
+0xe3 through 0xeb and later object volatile forms at 0xfc through 0xfe,
+with API bounds. These are runtime-specific accesses to fields with the
+applicable volatile ordering. Portable DEX instead uses the ordinary field
+instruction and the field's declared volatile property.
+
+It records throw-verification-error at 0xed, execute-inline at 0xee,
+execute-inline/range at 0xef, and version-dependent direct-empty or
+object-initializer-range invocation at 0xf0. These are linked or specialized
+runtime actions, not new portable ordinary calls. In particular the operands
+of inline formats select a runtime inline table, not a method_ids entry.
+
+The historical quick accessors at 0xf2 through 0xf7 use resolved field offsets.
+Virtual quick calls at 0xf8/0xf9 and historical super quick calls at 0xfa/0xfb
+use runtime table positions. Their embedded numbers are not portable symbolic
+field or method indices. Runtime/layout-specific linkage metadata is needed
+to recover the original symbolic references safely.
+
+HISTORICAL ART QUICKENING.
+
+The same decoder maps return-void-barrier and return-void-no-barrier to
+0x73 under different ART-version bounds. It maps quick field forms across
+0xe3 through 0xe8, virtual quick calls to 0xe9/0xea and narrow quick field
+forms across 0xeb through 0xf2. These differ from the Dalvik assignments.
+Return barrier choices concern implementation synchronization work and do
+not allocate a portable return opcode at 0x73.
+
+NUMERICAL COLLISIONS.
+
+In portable DEX 038, 0xfa and 0xfb are polymorphic calls and 0xfc/0xfd
+are custom calls. From 039, 0xfe and 0xff load method handles/types.
+Those meanings do not replace optimized meanings in an older odex namespace.
+Conversely an old decoder's optimized name must not override a modern
+standard DEX interpretation after the file version and namespace are known.
+
+The source checker compares the PORTABLE, non-ODEX entries with the main
+inventory. It separately preserves the entire foreign enum, including
+historical range maps. It does not pretend this note enumerates every private
+optimized opcode ever used by every runtime vendor. Unknown optimized bytes
+remain unsupported and require their own pinned implementation source.
+
+The suggested optimized formats 20bc, 22cs, 35ms/3rms and 35mi/3rmi in
+the AOSP formats document support interpretation of such evidence; they
+do not require a portable runtime to accept optimized code as input.

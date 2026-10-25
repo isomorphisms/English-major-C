@@ -1,0 +1,125 @@
+SOURCE EXCERPT, NOT FIRST-PARTY IMPLEMENTATION.
+Source Git blob: 2aed50612196aac0d36ccb26bc990168aba424e3
+Repository: LineageOS/android_art
+Ref observed: lineage-24.0 (commit 747707d6ce1c145f2249f120c692e0aeb2b8a257)
+Original line numbers follow. Omitted text is explicitly marked.
+Trailing display whitespace is omitted; the original blob is unchanged.
+
+
+[... omitted lines ...]
+    1 /*
+    2  * Copyright (C) 2012 The Android Open Source Project
+    3  *
+    4  * Licensed under the Apache License, Version 2.0 (the "License");
+    5  * you may not use this file except in compliance with the License.
+    6  * You may obtain a copy of the License at
+    7  *
+    8  *      http://www.apache.org/licenses/LICENSE-2.0
+    9  *
+   10  * Unless required by applicable law or agreed to in writing, software
+   11  * distributed under the License is distributed on an "AS IS" BASIS,
+   12  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   13  * See the License for the specific language governing permissions and
+   14  * limitations under the License.
+   15  */
+   16
+
+[... omitted lines ...]
+ 1519 }
+ 1520
+ 1521 template <bool is_range>
+ 1522 bool DoFilledNewArray(const Instruction* inst,
+ 1523                       const ShadowFrame& shadow_frame,
+ 1524                       Thread* self,
+ 1525                       JValue* result) {
+ 1526   DCHECK(inst->Opcode() == Instruction::FILLED_NEW_ARRAY ||
+ 1527          inst->Opcode() == Instruction::FILLED_NEW_ARRAY_RANGE);
+ 1528   const int32_t length = is_range ? inst->VRegA_3rc() : inst->VRegA_35c();
+ 1529   if (!is_range) {
+ 1530     // Checks FILLED_NEW_ARRAY's length does not exceed 5 arguments.
+ 1531     CHECK_LE(length, 5);
+ 1532   }
+ 1533   if (UNLIKELY(length < 0)) {
+ 1534     ThrowNegativeArraySizeException(length);
+ 1535     return false;
+ 1536   }
+ 1537   uint16_t type_idx = is_range ? inst->VRegB_3rc() : inst->VRegB_35c();
+ 1538   bool do_access_check = !shadow_frame.GetMethod()->SkipAccessChecks();
+ 1539   ObjPtr<mirror::Class> array_class = ResolveVerifyAndClinit(dex::TypeIndex(type_idx),
+ 1540                                                              shadow_frame.GetMethod(),
+ 1541                                                              self,
+ 1542                                                              false,
+ 1543                                                              do_access_check);
+ 1544   if (UNLIKELY(array_class == nullptr)) {
+ 1545     DCHECK(self->IsExceptionPending());
+ 1546     return false;
+ 1547   }
+ 1548   CHECK(array_class->IsArrayClass());
+ 1549   ObjPtr<mirror::Class> component_class = array_class->GetComponentType();
+ 1550   const bool is_primitive_int_component = component_class->IsPrimitiveInt();
+ 1551   if (UNLIKELY(component_class->IsPrimitive() && !is_primitive_int_component)) {
+ 1552     // Verifier rejects `filled-new-array/-range` with descriptors `[J` and `[D`.
+ 1553     // These are forbidden, see https://source.android.com/docs/core/runtime/dalvik-bytecode .
+ 1554     DCHECK(!component_class->IsPrimitiveLong());
+ 1555     DCHECK(!component_class->IsPrimitiveDouble());
+ 1556     self->ThrowNewExceptionF(
+ 1557         "Ljava/lang/InternalError;",
+ 1558         "Found type %s; filled-new-array not implemented for anything but 'int'",
+ 1559         component_class->PrettyDescriptor().c_str());
+ 1560     return false;
+ 1561   }
+ 1562   ObjPtr<mirror::Object> new_array = mirror::Array::Alloc(
+ 1563       self,
+ 1564       array_class,
+ 1565       length,
+ 1566       array_class->GetComponentSizeShift(),
+ 1567       Runtime::Current()->GetHeap()->GetCurrentAllocator());
+ 1568   if (UNLIKELY(new_array == nullptr)) {
+ 1569     self->AssertPendingOOMException();
+ 1570     return false;
+ 1571   }
+ 1572   uint32_t arg[Instruction::kMaxVarArgRegs];  // only used in filled-new-array.
+ 1573   uint32_t vregC = 0;   // only used in filled-new-array-range.
+ 1574   if (is_range) {
+ 1575     vregC = inst->VRegC_3rc();
+ 1576   } else {
+ 1577     inst->GetVarArgs(arg);
+ 1578   }
+ 1579   // We're initializing a newly allocated array, so we do not need to record that under
+ 1580   // a transaction. If the transaction is aborted, the whole array shall be unreachable.
+ 1581   if (LIKELY(is_primitive_int_component)) {
+ 1582     ObjPtr<mirror::IntArray> int_array = new_array->AsIntArray();
+ 1583     for (int32_t i = 0; i < length; ++i) {
+ 1584       size_t src_reg = is_range ? vregC + i : arg[i];
+ 1585       int_array->SetWithoutChecks</*kTransactionActive=*/ false, /*kCheckTransaction=*/ false>(
+ 1586           i, shadow_frame.GetVReg(src_reg));
+ 1587     }
+ 1588   } else {
+ 1589     ObjPtr<mirror::ObjectArray<mirror::Object>> object_array =
+ 1590         new_array->AsObjectArray<mirror::Object>();
+ 1591     for (int32_t i = 0; i < length; ++i) {
+ 1592       size_t src_reg = is_range ? vregC + i : arg[i];
+ 1593       object_array->SetWithoutChecks</*kTransactionActive=*/ false, /*kCheckTransaction=*/ false>(
+ 1594           i, shadow_frame.GetVRegReference(src_reg));
+ 1595     }
+ 1596   }
+ 1597
+ 1598   result->SetL(new_array);
+ 1599   return true;
+ 1600 }
+ 1601
+ 1602 void UnlockHeldMonitors(Thread* self, ShadowFrame* shadow_frame)
+ 1603     REQUIRES_SHARED(Locks::mutator_lock_) {
+ 1604   DCHECK(shadow_frame->GetForcePopFrame() ||
+ 1605          (Runtime::Current()->IsActiveTransaction() &&
+ 1606              Runtime::Current()->GetClassLinker()->IsTransactionAborted()));
+ 1607   // Unlock all monitors.
+ 1608   if (shadow_frame->GetMethod()->MustCountLocks()) {
+ 1609     DCHECK(!shadow_frame->GetMethod()->SkipAccessChecks());
+ 1610     // Get the monitors from the shadow-frame monitor-count data.
+ 1611     shadow_frame->GetLockCountData().VisitMonitors(
+ 1612       [&](mirror::Object** obj) REQUIRES_SHARED(Locks::mutator_lock_) {
+ 1613         // Since we don't use the 'obj' pointer after the DoMonitorExit everything should be fine
+ 1614         // WRT suspension.
+ 1615         DoMonitorExit(self, shadow_frame, *obj);
+ 1616       });

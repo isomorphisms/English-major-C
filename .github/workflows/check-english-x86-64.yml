@@ -32,14 +32,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/compile-english-assembly.test.mjs tests/compile-english-x86-64.test.mjs
-          node tools/compile-english-assembly.mjs \
-            'examples/unknown-entry-sum/An unknown entry is omitted from an addition.english' \
+          node --test _/tests/compile-english-assembly.test.mjs _/tests/compile-english-x86-64.test.mjs
+          node _/tools/compile-english-assembly.mjs \
+            'arm/thumb/addition/An unknown entry is omitted from an addition.english' \
             "$RUNNER_TEMP/arm.s"
-          cmp "$RUNNER_TEMP/arm.s" examples/unknown-entry-sum/generated-thumb.s
-          node tools/compile-english-x86-64.mjs \
-            'examples/unknown-entry-sum-x86-64/An unknown entry is omitted using x86-64 instructions.english' \
+          cmp "$RUNNER_TEMP/arm.s" arm/thumb/addition/generated-thumb.s
+          node _/tools/compile-english-x86-64.mjs \
+            'x86/addition/An unknown entry is omitted using x86-64 instructions.english' \
             "$RUNNER_TEMP/x86.s"
-          cmp "$RUNNER_TEMP/x86.s" examples/unknown-entry-sum-x86-64/generated-x86-64.s
+          cmp "$RUNNER_TEMP/x86.s" x86/addition/generated-x86-64.s
 
 # Source grammar/assembly reproducibility only; not native/emulated execution.

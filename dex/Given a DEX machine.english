@@ -1,0 +1,171 @@
+GIVEN A DEX MACHINE.
+
+English Major C architectural catalogue. Target: portable standard DEX.
+This document specifies a virtual execution model, not a physical processor,
+a compiler, an interpreter, or permission to execute arbitrary input.
+Read README.md in this directory for the coverage and evidence boundary.
+
+REGISTERS AND VALUES.
+
+Each invocation has its own fixed-size register frame. The code_item supplies
+registers_size, ins_size and outs_size. Register indices begin at zero and
+must be less than registers_size. The fact that an encoding can represent
+65535 does not establish that register 65535 exists in a particular frame.
+registers_size is itself a sixteen-bit count.
+
+A register holds thirty-two bits when used for integer or floating-point
+bits. An adjacent pair holds a sixty-four-bit long or double. The lower
+numbered register holds the low half. Odd-numbered pair starts are allowed.
+Both members must exist. A pair start selected by a four-bit field can be
+v15 with v16 as its second member if the frame contains both.
+
+An object register holds one object reference. DEX does not promise that
+this reference is a portable thirty-two-bit physical address. Null has the
+zero representation for the purposes of DEX constant and reference rules.
+An arbitrary integer is not thereby a reference. Verification tracks types,
+uninitialized references, and the relationship between the halves of pairs.
+DEX registers have no ARM N/Z/C/V flags and no hardware PC register.
+
+Read all source values from the state before writing a destination. In
+particular move-wide may copy vN:vN+1 to vN-1:vN or vN+1:vN+2 without
+destroying a source half before reading it. The same original-value rule
+applies to permitted arithmetic source/destination aliases and two-address
+operations. A write which splits another live pair changes the validity of
+later uses of that pair; it does not preserve the overwritten old value.
+This is not a promise of atomic shared-memory access to a pair.
+
+FRAMES, CALLS AND RESULTS.
+
+Incoming argument words occupy the last ins_size registers in order.
+A long or double consumes two adjacent words. A non-static method receives
+its receiver first. Each invocation has a fresh frame; argument registers
+in the caller are read, not transferred out of existence. The frame and
+outgoing-word limits must accommodate the method's prototype and call.
+
+The invocation instructions select an ordered list of argument words.
+The compact forms list up to five individual four-bit register indices;
+both consecutive words of a wide argument must be listed. Range forms
+select a consecutive interval by a sixteen-bit first index and an eight-bit
+word count. Counts are words, not the number of mathematical arguments.
+The receiver counts as one word. A zero count has an empty interval and
+must not be interpreted as an access to first_register minus one.
+
+A call suspends this frame and enters the selected method or the applicable
+native method boundary. On normal completion its value, if any, is available
+in a transient result channel. This is not an ordinary named DEX register.
+The caller resumes immediately after its whole invocation instruction.
+Only an immediately following move-result of the correct kind may retain
+that value. Otherwise the result is ignored. A branch into move-result
+cannot manufacture a result. A void call supplies no value to move-result.
+filled-new-array also supplies an object result for move-result-object.
+
+Return instructions leave the current invocation, perform required method
+exit synchronization, and resume its caller with the declared kind of result.
+They do not continue at the next instruction in the returning method.
+Constructor calls additionally change the verifier's uninitialized-reference
+state. Allocation and constructor invocation remain separate operations.
+
+THE EXECUTION INDEX.
+
+The repository's "What is the execution index?" defines the concept by the
+location of the next instruction. In DEX this location is identified by the
+current method together with a nonnegative offset into code_item.insns.
+The unit is a sixteen-bit code unit. It is not an instruction ordinal,
+a byte count, an ARM PC operand, or an address of generated native code.
+A byte offset into the method's instruction array is twice this offset.
+
+In the catalogue, current means the offset of the instruction being executed.
+Normal sequential execution continues at current plus the instruction's
+whole length in code units. A branch displacement is a signed count of
+code units relative to current, never relative to the following instruction.
+The result must designate the start of an executable instruction in the same
+method. A displacement inside a multi-unit instruction or payload is invalid.
+Conditional branches and goto/goto16 prohibit zero displacements. goto/32
+permits zero, so it can express a self-loop. A normal path cannot fall off
+the method's instruction array.
+
+A switch's encoded displacement finds its data payload relative to the
+switch instruction. The case displacements stored in that payload are also
+relative to the switch instruction, not to the table or to individual entries.
+On a missing case, continue immediately after the three-unit switch.
+All three payload kinds begin at an even code-unit offset, that is, at a
+four-byte boundary relative to the instruction array. They are data and must
+never be reached by ordinary sequential or branch execution.
+
+REFERENCES AND RESOLUTION.
+
+An index identifies an entry in the current DEX file's string_ids, type_ids,
+field_ids, method_ids, proto_ids, call_site_ids or method_handles table as
+specified by the opcode. The same number in another table or file has no
+implied relationship. Most indices occupy sixteen bits; const-string/jumbo
+has a thirty-two-bit string index. An encoded index must be in its table.
+An index is not a native pointer, field offset, vtable offset or object.
+
+Resolution uses the referencing method's class loader and access context.
+Missing definitions, wrong member kind and access restrictions can prevent
+completion. Implementations may resolve eagerly or lazily within the
+applicable language/runtime rules. A symbolic reference does not assert
+that the referenced definition is present in this same DEX file.
+
+Resolving or obtaining a Class object does not by itself initialize that
+class. new-instance, static field access and static invocation have the
+class-initialization obligations described in the companion effects document.
+Array creation does not initialize its reference component class. Interning
+a string, resolving a method handle, loading a class, and running a class
+initializer are distinct operations.
+
+FETCHING AND EXCEPTIONAL COMPLETION.
+
+Identify the low opcode byte of the first code unit, decode the whole format,
+and interpret operands using its width, signedness and reference kind.
+The most significant byte of a 10x instruction is unused and must be zero;
+0x0100, 0x0200 and 0x0300 identify payloads instead of executable nop.
+Other nonzero high-byte values do not grant new portable nop meanings.
+Multi-unit immediate fields place less significant units before more
+significant units; decoding a file's byte order is a separate earlier step.
+
+Normal completion applies the stated data effects and continuation.
+Exceptional completion does not also perform normal continuation or write
+an unproduced normal result. Effects already made by invoked code, class
+initialization, or other threads are not rolled back. A throw searches the
+applicable protected instruction range, then its handlers, or unwinds to
+the caller if no matching handler exists. A caller's handler search uses
+the calling instruction, not a successfully completed return continuation.
+An uncaught exception leaves the current call chain through the runtime's
+uncaught-exception boundary. This does not prescribe an Android UI response.
+
+At handler entry the caught object is available to an initial move-exception.
+Such an instruction is allowed only as the handler's first instruction.
+A handler may ignore the object and omit it. Ordinary control flow must not
+enter a move-exception and pretend that an exception has just been caught.
+monitor-exit has the explicitly documented exceptional-index exception:
+its exception is attributed as though the index had advanced past it.
+
+LAYERS WHICH MUST REMAIN SEPARATE.
+
+Encoding validity asks whether the bytes contain the right format, unused
+bits, field widths, boundaries, table indices, lengths and alignment.
+Verification additionally checks register types, pairs, prototypes,
+uninitialized objects, return categories, legal result/handler positions,
+branch joins and monitor discipline. Execution additionally depends on actual
+nullness, bounds, loaded definitions, access, initialization, locks and memory.
+An invalid method is not granted a successful runtime meaning merely because
+its opcode number is standard or an independent decoder prints a mnemonic.
+
+ART's interpreter, JIT, ahead-of-time compiler, caches, compressed references,
+garbage collection barriers and quickening are implementations. This catalogue
+does not select one. Android Activities, Binder, widgets and framework APIs
+are library/service behavior reached by calls, not extra DEX instructions.
+Generated ARM instructions have their own machine contract. DEX v0 and ARM R0
+are different objects even when one lowering happens to use one for the other.
+
+SOURCES.
+
+B: https://source.android.com/docs/core/runtime/dalvik-bytecode
+F: https://source.android.com/docs/core/runtime/instruction-formats
+D: https://source.android.com/docs/core/runtime/dex-format
+C: https://source.android.com/docs/core/runtime/constraints
+Implementation corroboration and its exact provenance are in
+../../fixtures/dex/sources/manifest.tsv and the audit report. Those paths
+are relative to the repository root when written without this paragraph's
+directory context; README.md provides ordinary clickable links.

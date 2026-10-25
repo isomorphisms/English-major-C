@@ -31,7 +31,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          source_dir="$(pwd)/examples/r-lm-native-armv7-linux-hardfp-linked"
+          source_dir="$RUNNER_TEMP/original-hardfp-capture"
+          node _/tools/resolve-repository-path.mjs --copy-capture examples/r-lm-native-armv7-linux-hardfp-linked "$source_dir"
           cd "$source_dir"
           sha256sum -c SHA256SUMS
           binary=call_r_qr.armv7-hardfp
@@ -70,7 +71,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          source_dir="$(pwd)/examples/r-lm-native-armv7-linux-hardfp-linked"
+          source_dir="$RUNNER_TEMP/original-hardfp-capture"
           work="$(mktemp -d)"
           trap 'rm -rf "$work"' EXIT
           cp -a "$source_dir/." "$work/"
