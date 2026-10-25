@@ -1,0 +1,27 @@
+format	code_units	encoding
+10x	1	ØØ:op
+12x	1	B:A:op
+11n	1	B:A:op
+11x	1	AA:op
+10t	1	AA:op
+20t	2	ØØ:op AAAA
+22x	2	AA:op BBBB
+21t	2	AA:op BBBB
+21s	2	AA:op BBBB
+21h	2	AA:op BBBB
+21c	2	AA:op BBBB
+23x	2	AA:op CC:BB
+22b	2	AA:op CC:BB
+22t	2	B:A:op CCCC
+22s	2	B:A:op CCCC
+22c	2	B:A:op CCCC
+30t	3	ØØ:op AAAA-low AAAA-high
+32x	3	ØØ:op AAAA BBBB
+31i	3	AA:op BBBB-low BBBB-high
+31t	3	AA:op BBBB-low BBBB-high
+31c	3	AA:op BBBB-low BBBB-high
+35c	3	A:G:op BBBB F:E:D:C
+3rc	3	AA:op BBBB CCCC
+45cc	4	A:G:op BBBB F:E:D:C HHHH
+4rcc	4	AA:op BBBB CCCC HHHH
+51l	5	AA:op BBBB-low BBBB-next BBBB-next BBBB-high
