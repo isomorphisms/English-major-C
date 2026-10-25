@@ -1,0 +1,280 @@
+VALIDITY, ARITHMETIC AND SHARED EFFECTS.
+
+This document supplies the named rules cited by each individual entry in
+"Every primary opcode.english" and by inventory.tsv. A rule citation is part
+of the entry's meaning. It does not replace the entry's English operation.
+No parser or executable English grammar is defined here.
+
+FRAME, TYPES AND PAIRS.
+
+All named register words must exist in the current frame. Every source must
+have been assigned a type-compatible value along every incoming path.
+Every required pair must consist of two adjacent existing words with the
+proper long or double type. Its first index need not be even. A four-bit
+index limits the pair start, not necessarily its second member to four bits.
+Overlapping operands use the original source values before writes.
+Verification merges type state at joins and invalidates a former pair half
+when an overlapping narrow write destroys its partner. These checks do not
+grant arithmetic conversion between int bits and references.
+
+RESULT, HANDLER AND RETURN.
+
+The result instruction must immediately follow its producing invoke in
+the instruction array AND in actual normal control flow. Its category must
+match the return prototype. An object result from filled-new-array also
+qualifies. The result may instead be ignored; it cannot be picked up later.
+No branch may enter a result instruction. No exception path produces the
+normal result of an invocation that did not complete normally.
+
+move-exception may appear only at the first instruction of a handler.
+The caught object may be ignored by omitting that instruction. It is not a
+load of a globally last-thrown exception. The handler's type is determined
+by its protected ranges and caught types, not by an arbitrary incoming value.
+
+Return category must match the method prototype: void, single-word primitive,
+wide primitive, or reference. Reference assignment compatibility, narrow
+primitive requirements, initialized-object state and constructor obligations
+still apply. A return does not run the next instruction in this frame.
+
+EXIT.
+
+Method exit includes the runtime's method-level synchronization obligations.
+When a synchronized method has acquired its implicit monitor, normal or
+exceptional method exit must release it as required. Explicit monitor-enter
+operations must follow legal monitor discipline; a return instruction is not
+a substitute for explicit monitor-exit cleanup. Invalid lock state may be
+rejected by verification or cause IllegalMonitorStateException under runtime
+monitor checks. Do not infer a successful return from an invalid method.
+ART compatibility/instrumentation paths can have additional exceptional
+behavior; those are not portable new opcode semantics.
+
+BRANCH AND SWITCH.
+
+Offsets are signed code-unit counts relative to the branch instruction.
+Targets must be real executable instruction starts in this same method,
+not a second unit, a data payload, a move-result or a move-exception entry
+that lacks its required context. goto, goto/16 and every if forbid zero
+offset; goto/32 permits it. A conditional instruction does not write flags.
+Equality accepts compatible integer values or object references as allowed
+by verification. Reference comparisons test identity. Ordered if tests use
+signed integers; a float needs a separate comparison instruction first.
+
+Each switch has the matching aligned payload kind and a fully bounded table.
+Sparse keys strictly increase. Packed keys must not wrap their signed range.
+Each selected case target is relative to the switch, not the payload.
+A missing case continues by three units. Payload layout and overflow-safe
+extent calculation are in "Instruction formats and data payloads.english".
+
+COUNT-LIST AND COUNT-RANGE.
+
+A compact list contains zero through five WORDS. Select the first count
+register fields in C,D,E,F,G order. A wide parameter supplies two successive
+argument words whose register indices are consecutive. A range contains
+zero through 255 consecutive words beginning at its encoded start. The
+entire interval must exist without wrapping an index calculation.
+The method's outgoing-word capacity must accommodate calls. The count and
+word kinds must agree with the selected prototype. An instance receiver
+uses one word; a static invocation does not invent one.
+
+INVOCATION.
+
+Method indices must resolve to an accessible member of the right kind.
+Virtual methods are neither static nor private nor constructors. Direct
+instance calls target the permitted private method or instance initializer.
+Constructors require the appropriate uninitialized instance. Other uses
+must not consume an uninitialized reference as an ordinary initialized one.
+Calls to names beginning with '<' are forbidden except the permitted
+invoke-direct invocation of <init>; <clinit> is not explicitly called here.
+Prototype arguments and return kind must agree. Protected access includes
+the receiver restrictions imposed by the caller's class context.
+
+Before DEX 037, invoke-super and invoke-static cannot use interface method
+references. From 037, interface-super selection follows the most specific
+non-overridden interface implementation and static interface methods can
+be referenced. This changes contextual validity of existing opcodes,
+not the size or number of their primary opcode bytes.
+
+Resolution/kind/access failures include NoSuchMethodError, IllegalAccessError,
+IncompatibleClassChangeError and class-resolution failures as applicable.
+A missing concrete implementation can cause AbstractMethodError. Excessive
+call depth may cause StackOverflowError. A null instance receiver causes
+NullPointerException. A native method can fail linkage with UnsatisfiedLinkError.
+The invoked method, including a framework or native method, can throw other
+exceptions or have arbitrary effects according to its own contract. This
+catalogue does not mistake those contracts for a finite DEX opcode exception
+list. Signature-polymorphic and custom calls add their individually stated
+MethodHandle and bootstrap contracts.
+
+ARRAY AND ARRAY-CREATION.
+
+Array references, integer indices and element categories must match the
+opcode: int/float word, long/double pair, object, boolean, byte, char, short.
+Read a byte or short with sign extension; read a char with zero extension.
+Read a Boolean as zero or one. Narrow stores retain the field's or element's
+width; a verified Boolean input already obeys Boolean value constraints.
+An object store must be compatible with the array's ACTUAL component class;
+static reference compatibility alone does not eliminate ArrayStoreException.
+Array stores do not initialize the component class merely by storing a value.
+
+An array index must be at least zero and smaller than its actual length.
+Null checks and bounds checks are execution conditions, not permissions
+granted by a valid 23x encoding. A failed access does not supply a normal
+load result or successfully replace the target element.
+
+new-array designates a valid array type, with at most 255 dimensions. It
+allocates only the requested outer array, not a recursively populated
+multidimensional structure. Primitive elements start at zero; reference
+elements start null. Negative lengths and allocation failure are distinct.
+filled-new-array and its range form cannot take wide long/double components.
+The inspected ART implementation additionally restricts supported primitive
+filled components to int, while the public opcode table states the broader
+single-word rule. The audit records that restriction explicitly; it is not
+silently promoted to the portable table's definition. ARRAY-CREATION is thus
+source-qualified for the disputed narrow/float primitive forms.
+
+FIELD.
+
+The reference identifies a field by its class, name and declared type, not
+by a byte address. Instance operations require an instance field and a
+compatible initialized receiver. Constructor verification allows the narrow
+explicit exception for assigning this class's own non-inherited instance
+fields before the required super/this constructor call. This does not grant
+general use of the uninitialized object. Static operations require a static
+field and initialize the class that actually DECLARES the resolved field.
+The class named in the original symbolic reference need not declare an
+inherited field. Opcodes must match the field category and access rules.
+
+Final-field stores are limited by the defining class/initializer rules;
+they are not generally writable because the reference index encodes them.
+Narrow reads sign-extend byte and short, zero-extend char, and represent
+Boolean as zero or one. Word and wide forms preserve int/float and
+long/double bits under matching declared types. Reference stores preserve
+identity and must be assignment-compatible with the declared field type.
+Field errors include NoSuchFieldError, IllegalAccessError and
+IncompatibleClassChangeError for wrong static/instance kind, plus RESOLUTION.
+Some such errors may be caught during verification/resolution rather than
+by a particular runtime check. Malformed typing is not promised to become
+a particular Java exception at the point of the field instruction.
+
+Volatile is a FIELD property, not a separate portable iget-volatile opcode.
+A volatile field access must supply the applicable Java memory-model
+ordering and atomicity. Ordinary accesses do not acquire monitor ordering
+merely because they use the same instruction family. A wide register pair
+does not itself prove atomicity of an ordinary shared long/double field.
+ART's read/write barriers and object representation are implementations.
+
+RESOLUTION, NEW AND INITIALIZATION.
+
+Valid indices and descriptors are necessary but not sufficient for successful
+resolution. Resolving a missing class can raise NoClassDefFoundError; access
+or linkage can raise the appropriate IllegalAccessError or LinkageError
+subclass. Member-resolution errors are stated by FIELD and INVOCATION.
+An implementation may discover failures at a permitted earlier stage;
+do not require every invalid method to start and then throw at the opcode.
+
+new-instance must name a non-array class. Interfaces and abstract classes
+cannot be instantiated. The public static constraints disallow such new
+targets, while the runtime also contains InstantiationError checks. This
+is a distinction between method validity and runtime defensive checking.
+
+INITIALIZATION: initialize the resolved declaring class when required before
+new-instance allocation, static field access, or static invocation. Follow
+the language/runtime initialization order, including required superclasses
+and applicable superinterfaces, and coordinate concurrent initialization.
+Recursive initialization by the same thread does not simply run the same
+initializer again. Initializer execution may have arbitrary effects.
+A non-Error thrown by the initializer is normally wrapped in
+ExceptionInInitializerError; an Error can propagate directly. A class left
+erroneous causes NoClassDefFoundError on subsequent required initialization.
+Allocation can fail with OutOfMemoryError, including allocation needed while
+resolving constants. Resolution alone, const-class, and array creation do
+not automatically run a component class initializer.
+
+INTEGER ARITHMETIC.
+
+Int is signed two's-complement thirty-two-bit and long sixty-four-bit.
+Addition, subtraction, multiplication and negation keep their low width
+bits and never throw for overflow. Division truncates toward zero.
+Minimum signed integer divided by minus one returns that same minimum,
+without an overflow exception. Its remainder is zero. A zero integer
+divisor throws ArithmeticException. For other dividends the remainder has
+the dividend's sign or is zero, and its magnitude is smaller than the
+divisor's magnitude. For example minus seven divided by three is minus
+two and its remainder is minus one, not positive two.
+
+Shift counts are masked, not range-checked: five low bits for int, six for
+long. A long shift's count occupies one INT register, not another pair.
+Arithmetic right shifts sign-fill; logical right shifts zero-fill.
+Left shifts discard outgoing high bits. Literals are sign-extended before
+word arithmetic and bitwise operations. rsub subtracts the REGISTER from
+the LITERAL, reversing the usual register-then-literal operand order.
+
+FLOAT.
+
+Float and double mean IEEE binary32 and binary64 values. Arithmetic rounds
+to nearest with ties to an even significand and preserves gradual underflow,
+except the expressly different conversion and remainder rules. Results
+include signed zero, subnormal values, signed infinity and NaN. Numeric
+overflow, underflow, invalid floating arithmetic and floating division by
+zero do not raise integer ArithmeticException or a hardware trap promised
+by DEX. Do not assert portable preservation of a NaN's payload or sign.
+
+Addition of opposite infinities gives NaN. Subtraction of like infinities
+gives NaN. Multiplying zero by infinity gives NaN. Dividing zero by zero
+or infinity by infinity gives NaN. Finite nonzero divided by zero gives an
+infinity with the quotient sign. Finite divided by infinity gives signed
+zero; products and quotients use the exclusive-or of operand signs.
+With nearest rounding, exact cancellation of opposite nonzero finite values
+gives positive zero. Adding two negative zeros gives negative zero; the
+usual signed-zero rules govern the other zero sums and differences.
+A NaN input propagates NaN classification for floating arithmetic.
+
+Floating remainder uses an INTEGER quotient truncated toward zero in the
+mathematical definition, not the IEEE nearest-integer remainder operation.
+Do not implement that definition by first rounding a floating quotient and
+then multiplying it; that can overflow or round differently. A finite
+dividend and infinite divisor return the dividend. A zero dividend with
+nonzero finite or infinite divisor preserves its signed zero. An infinite
+dividend, zero divisor, or NaN operand produces NaN. A nonzero finite
+remainder has the dividend's sign.
+
+Floating comparisons return integer minus one, zero or one. Both signed
+zeros compare equal. A cmpl instruction chooses minus one on ANY NaN;
+cmpg chooses one. Comparing NaNs does not itself throw.
+
+Floating-to-integer conversion truncates toward zero; NaN becomes zero;
+out-of-range values saturate at the signed target endpoints, including
+infinities. Integer-to-float and narrowing double-to-float use nearest-even.
+Converting an int to long or double is exact. Long-to-int discards high
+bits. Float-to-double preserves finite values exactly; no bit-exact NaN
+payload conversion is promised.
+
+MONITOR AND COMMON EXCEPTION BOUNDARY.
+
+Monitors are reentrant and owned by threads. Entry may block and establish
+acquire ordering; final release establishes release ordering. Entry/exit
+does not assert fairness, a timeout or an implicit call to Object.wait.
+Null references fail; an unowned exit fails with IllegalMonitorStateException.
+Verification additionally tracks admissible structured monitor use and
+aliasing. A monitor's state is not stored in an ordinary virtual register.
+The public table's special post-instruction exception attribution for
+monitor-exit must survive a lowering even if the runtime's helper API
+looks like an ordinary function call.
+
+Each entry's exception column lists its portable operation-specific failures
+and shared categories. It is not an exhaustive finite list of all exceptions
+which arbitrary called code, initialization, resource exhaustion, platform
+compatibility paths or asynchronous runtime events could cause. Rejection
+of an ill-typed or malformed method belongs to validation, not to normal
+execution of that method. No claim about error priority is made when the
+sources do not establish which of several simultaneously failing checks
+takes precedence. The audit preserves the known public-table discrepancies.
+
+SOURCES.
+
+B mathematical details and individual opcode notes; F operand encodings;
+D field/method/prototype/code/handler definitions and version history;
+C structural constraints. Java language memory, initialization and numeric
+rules are corroborated by the source packet listed in fixtures/dex/sources.
+ART implementation excerpts are explicitly implementation evidence, not
+an undocumented replacement for the portable instruction contract.

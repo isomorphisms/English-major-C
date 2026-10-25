@@ -1,0 +1,378 @@
+SOURCE EXCERPT, NOT FIRST-PARTY IMPLEMENTATION.
+Source Git blob: 943e2781c3be90bc04baab5d8bc18287cb9fa275
+Repository: LineageOS/android_art
+Ref observed: lineage-24.0 (commit 747707d6ce1c145f2249f120c692e0aeb2b8a257)
+Original line numbers follow. Omitted text is explicitly marked.
+Trailing display whitespace is omitted; the original blob is unchanged.
+
+
+[... omitted lines ...]
+    1 /*
+    2  * Copyright (C) 2011 The Android Open Source Project
+    3  *
+    4  * Licensed under the Apache License, Version 2.0 (the "License");
+    5  * you may not use this file except in compliance with the License.
+    6  * You may obtain a copy of the License at
+    7  *
+    8  *      http://www.apache.org/licenses/LICENSE-2.0
+    9  *
+   10  * Unless required by applicable law or agreed to in writing, software
+   11  * distributed under the License is distributed on an "AS IS" BASIS,
+   12  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   13  * See the License for the specific language governing permissions and
+   14  * limitations under the License.
+   15  */
+   16
+
+[... omitted lines ...]
+ 2308     case Instruction::GOTO:
+ 2309       *pOffset = ((int16_t) *insns) >> 8;
+ 2310       break;
+ 2311     case Instruction::GOTO_32:
+ 2312       *pOffset = insns[1] | (((uint32_t) insns[2]) << 16);
+ 2313       *selfOkay = true;
+ 2314       break;
+ 2315     case Instruction::GOTO_16:
+ 2316       *pOffset = (int16_t) insns[1];
+ 2317       break;
+ 2318     case Instruction::IF_EQ:
+ 2319     case Instruction::IF_NE:
+ 2320     case Instruction::IF_LT:
+ 2321     case Instruction::IF_GE:
+ 2322     case Instruction::IF_GT:
+ 2323     case Instruction::IF_LE:
+ 2324     case Instruction::IF_EQZ:
+ 2325     case Instruction::IF_NEZ:
+ 2326     case Instruction::IF_LTZ:
+ 2327     case Instruction::IF_GEZ:
+ 2328     case Instruction::IF_GTZ:
+ 2329     case Instruction::IF_LEZ:
+ 2330       *pOffset = (int16_t) insns[1];
+ 2331       *pConditional = true;
+ 2332       break;
+ 2333     default:
+ 2334       return false;
+ 2335   }
+ 2336   return true;
+ 2337 }
+ 2338
+ 2339 bool MethodVerifierImpl::CheckAndMarkSwitchTargets(uint32_t dex_pc,
+ 2340                                                    uint32_t end_dex_pc,
+ 2341                                                    const Instruction* inst,
+ 2342                                                    uint16_t inst_data) {
+ 2343   int32_t switch_payload_offset = inst->VRegB_31t();
+ 2344   /* Make sure the start of the switch data is in range. */
+ 2345   if (!IsOffsetInRange(dex_pc, end_dex_pc, switch_payload_offset)) {
+ 2346     FailTargetOffsetOutOfRange(dex_pc, end_dex_pc, switch_payload_offset);
+ 2347     return false;
+ 2348   }
+ 2349   // Make sure the switch data is marked as an opcode.
+ 2350   // This ensures that it was reached when traversing the code in `ComputeWidthsAndCountOps()`.
+ 2351   uint32_t switch_payload_dex_pc = dex_pc + switch_payload_offset;
+ 2352   if (UNLIKELY(!GetInstructionFlags(switch_payload_dex_pc).IsOpcode())) {
+ 2353     FailTargetMidInstruction(dex_pc, switch_payload_dex_pc);
+ 2354     return false;
+ 2355   }
+ 2356   // Make sure the switch data is at an even dex pc, that is, 32-bit aligned.
+ 2357   if (UNLIKELY(!IsAligned<2>(switch_payload_dex_pc))) {
+ 2358     FailUnalignedTableDexPc(dex_pc, switch_payload_dex_pc);
+ 2359     return false;
+ 2360   }
+ 2361
+ 2362   /* offset to switch table is a relative branch-style offset */
+ 2363   const Instruction* payload = inst->RelativeAt(switch_payload_offset);
+ 2364   DCHECK_EQ(payload, &code_item_accessor_.InstructionAt(switch_payload_dex_pc));
+ 2365   DCHECK_ALIGNED(payload, 4u);
+ 2366   const uint16_t* switch_insns = reinterpret_cast<const uint16_t*>(payload);
+ 2367
+ 2368   // Check for duplicate payload addresses
+ 2369   if (switch_payload_addresses_.find(switch_insns) != switch_payload_addresses_.end()) {
+ 2370     Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "Duplicate switch payload address " << switch_insns
+ 2371                                       << " at instruction offset 0x" << std::hex << dex_pc;
+ 2372     return false;
+ 2373   }
+ 2374   switch_payload_addresses_.insert(switch_insns);
+ 2375
+ 2376   bool is_packed_switch = inst->Opcode(inst_data) == Instruction::PACKED_SWITCH;
+ 2377   DCHECK_IMPLIES(!is_packed_switch, inst->Opcode(inst_data) == Instruction::SPARSE_SWITCH);
+ 2378
+ 2379   uint32_t switch_count = switch_insns[1];
+ 2380   int32_t targets_offset;
+ 2381   uint16_t expected_signature;
+ 2382   if (is_packed_switch) {
+ 2383     /* 0=sig, 1=count, 2/3=firstKey */
+ 2384     targets_offset = 4;
+ 2385     expected_signature = Instruction::kPackedSwitchSignature;
+ 2386   } else {
+ 2387     /* 0=sig, 1=count, 2..count*2 = keys */
+ 2388     targets_offset = 2 + 2 * switch_count;
+ 2389     expected_signature = Instruction::kSparseSwitchSignature;
+ 2390   }
+ 2391   uint16_t signature = switch_insns[0];
+ 2392   if (UNLIKELY(signature != expected_signature)) {
+ 2393     FailBadSwitchPayloadSignature(dex_pc, switch_payload_dex_pc, signature, expected_signature);
+ 2394     return false;
+ 2395   }
+ 2396   // The table size has been verified in `ComputeWidthsAndCountOps()`.
+ 2397   uint32_t table_size = targets_offset + switch_count * 2;
+ 2398   DCHECK_LT(switch_payload_dex_pc, end_dex_pc);
+ 2399   DCHECK_LE(table_size, end_dex_pc - switch_payload_dex_pc);
+ 2400
+ 2401   constexpr int32_t keys_offset = 2;
+ 2402   if (switch_count > 1) {
+ 2403     if (is_packed_switch) {
+ 2404       /* for a packed switch, verify that keys do not overflow int32 */
+ 2405       int32_t first_key = switch_insns[keys_offset] | (switch_insns[keys_offset + 1] << 16);
+ 2406       int32_t max_first_key =
+ 2407           std::numeric_limits<int32_t>::max() - (static_cast<int32_t>(switch_count) - 1);
+ 2408       if (UNLIKELY(first_key > max_first_key)) {
+ 2409         FailPackedSwitchKeyOverflow(dex_pc, switch_payload_dex_pc, first_key, switch_count);
+ 2410         return false;
+ 2411       }
+ 2412     } else {
+ 2413       /* for a sparse switch, verify the keys are in ascending order */
+ 2414       int32_t last_key = switch_insns[keys_offset] | (switch_insns[keys_offset + 1] << 16);
+ 2415       for (uint32_t targ = 1; targ < switch_count; targ++) {
+ 2416         int32_t key =
+ 2417             static_cast<int32_t>(switch_insns[keys_offset + targ * 2]) |
+ 2418             static_cast<int32_t>(switch_insns[keys_offset + targ * 2 + 1] << 16);
+ 2419         if (UNLIKELY(key <= last_key)) {
+ 2420           FailSparseSwitchPayloadKeyOrder(dex_pc, switch_payload_dex_pc, last_key, key);
+ 2421           return false;
+ 2422         }
+ 2423         last_key = key;
+ 2424       }
+ 2425     }
+ 2426   }
+ 2427   /* verify each switch target */
+ 2428   for (uint32_t targ = 0; targ < switch_count; targ++) {
+ 2429     int32_t offset = static_cast<int32_t>(switch_insns[targets_offset + targ * 2]) |
+ 2430                      static_cast<int32_t>(switch_insns[targets_offset + targ * 2 + 1] << 16);
+ 2431     if (!IsOffsetInRange(dex_pc, end_dex_pc, offset)) {
+ 2432       FailSwitchTargetOffsetOutOfRange(dex_pc, end_dex_pc, switch_payload_dex_pc, offset, targ);
+ 2433       return false;
+ 2434     }
+ 2435     uint32_t target_dex_pc = dex_pc + offset;
+ 2436     if (UNLIKELY(!GetInstructionFlags(target_dex_pc).IsOpcode())) {
+ 2437       FailSwitchTargetMidInstruction(dex_pc, target_dex_pc, switch_payload_dex_pc, targ);
+ 2438       return false;
+ 2439     }
+ 2440     Instruction::Code target_opcode = inst->RelativeAt(offset)->Opcode();
+ 2441     if (UNLIKELY(IsMoveResultOrMoveException(target_opcode))) {
+ 2442       FailSwitchTargetIsMoveResultOrMoveException(
+ 2443           dex_pc, target_dex_pc, target_opcode, switch_payload_dex_pc, targ);
+ 2444       return false;
+ 2445     }
+ 2446     GetModifiableInstructionFlags(target_dex_pc).SetBranchTarget();
+ 2447   }
+ 2448   return true;
+ 2449 }
+ 2450
+ 2451 template <bool kVerifierDebug>
+ 2452 bool MethodVerifier<kVerifierDebug>::VerifyCodeFlow() {
+ 2453   const uint16_t registers_size = code_item_accessor_.RegistersSize();
+ 2454
+ 2455   /* Create and initialize table holding register status */
+ 2456   reg_table_.Init(insn_flags_.get(),
+ 2457                   code_item_accessor_.InsnsSizeInCodeUnits(),
+ 2458                   registers_size,
+ 2459                   allocator_,
+ 2460                   interesting_dex_pc_);
+ 2461
+ 2462   work_line_.reset(RegisterLine::Create(registers_size, allocator_));
+ 2463   saved_line_.reset(RegisterLine::Create(registers_size, allocator_));
+ 2464
+ 2465   /* Initialize register types of method arguments. */
+ 2466   if (!SetTypesFromSignature()) {
+ 2467     DCHECK_NE(failures_.size(), 0U);
+ 2468     std::string prepend("Bad signature in ");
+ 2469     prepend += dex_file_->PrettyMethod(dex_method_idx_);
+ 2470     PrependToLastFailMessage(prepend);
+ 2471     return false;
+ 2472   }
+ 2473   // We may have a runtime failure here, clear.
+ 2474   flags_.have_pending_runtime_throw_failure_ = false;
+ 2475
+ 2476   /* Perform code flow verification. */
+ 2477   bool res = LIKELY(monitor_enter_dex_pcs_ == nullptr)
+ 2478                  ? CodeFlowVerifyMethod</*kMonitorDexPCs=*/ false>()
+ 2479                  : CodeFlowVerifyMethod</*kMonitorDexPCs=*/ true>();
+ 2480   if (UNLIKELY(!res)) {
+ 2481     DCHECK_NE(failures_.size(), 0U);
+ 2482     return false;
+ 2483   }
+
+[... omitted lines ...]
+ 3190       }
+ 3191       break;
+ 3192     }
+ 3193     case Instruction::MONITOR_EXIT: {
+ 3194       /*
+ 3195        * monitor-exit instructions are odd. They can throw exceptions,
+ 3196        * but when they do they act as if they succeeded and the PC is
+ 3197        * pointing to the following instruction. (This behavior goes back
+ 3198        * to the need to handle asynchronous exceptions, a now-deprecated
+ 3199        * feature that Dalvik doesn't support.)
+ 3200        *
+ 3201        * In practice we don't need to worry about this. The only
+ 3202        * exceptions that can be thrown from monitor-exit are for a
+ 3203        * null reference and -exit without a matching -enter. If the
+ 3204        * structured locking checks are working, the former would have
+ 3205        * failed on the -enter instruction, and the latter is impossible.
+ 3206        *
+ 3207        * This is fortunate, because issue 3221411 prevents us from
+ 3208        * chasing the "can throw" path when monitor verification is
+ 3209        * enabled. If we can fully verify the locking we can ignore
+ 3210        * some catch blocks (which will show up as "dead" code when
+ 3211        * we skip them here); if we can't, then the code path could be
+ 3212        * "live" so we still need to check it.
+ 3213        */
+ 3214       opcode_flags &= ~Instruction::kThrow;
+ 3215       uint32_t vreg = inst->VRegA_11x(inst_data);
+ 3216       const RegType& reg_type = work_line_->GetRegisterType(this, vreg);
+ 3217       if (!reg_type.IsReferenceTypes()) {
+ 3218         Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "monitor-exit on non-object (" << reg_type << ")";
+ 3219         return false;
+ 3220       }
+ 3221       work_line_->PopMonitor(this, vreg, reg_type);
+ 3222       break;
+ 3223     }
+ 3224     case Instruction::CHECK_CAST:
+ 3225     case Instruction::INSTANCE_OF: {
+ 3226       /*
+ 3227        * If this instruction succeeds, we will "downcast" register vA to the type in vB. (This
+ 3228        * could be a "upcast" -- not expected, so we don't try to address it.)
+ 3229        *
+ 3230        * If it fails, an exception is thrown, which we deal with later by ignoring the update to
+ 3231        * dec_insn.vA when branching to a handler.
+ 3232        */
+ 3233       const bool is_checkcast = (inst->Opcode() == Instruction::CHECK_CAST);
+ 3234       const dex::TypeIndex type_idx((is_checkcast) ? inst->VRegB_21c() : inst->VRegC_22c());
+ 3235       const RegType& res_type = ResolveClass<CheckAccess::kYes>(type_idx);
+ 3236       if (!res_type.IsNonZeroReferenceTypes()) {
+ 3237         // `void` (reported as conflict), or primitive type.
+ 3238         FailForVoidOrPrimitiveType(opcode, type_idx);
+ 3239         return false;
+ 3240       }
+ 3241       // TODO: check Compiler::CanAccessTypeWithoutChecks returns false when res_type is unresolved
+ 3242       uint32_t orig_type_reg =
+ 3243           (is_checkcast) ? inst->VRegA_21c(inst_data) : inst->VRegB_22c(inst_data);
+ 3244       const RegType& orig_type = work_line_->GetRegisterType(this, orig_type_reg);
+ 3245       if (!orig_type.IsReferenceTypes()) {
+ 3246         Fail(VERIFY_ERROR_BAD_CLASS_HARD) << opcode << " on non-reference in v" << orig_type_reg;
+ 3247         return false;
+ 3248       } else if (orig_type.IsUninitializedTypes()) {
+ 3249         Fail(VERIFY_ERROR_BAD_CLASS_HARD) << opcode << " on uninitialized reference in v"
+ 3250                                           << orig_type_reg;
+ 3251         return false;
+ 3252       } else {
+ 3253         if (is_checkcast) {
+ 3254           work_line_->SetRegisterType<LockOp::kKeep>(inst->VRegA_21c(inst_data), res_type);
+ 3255         } else {
+ 3256           work_line_->SetRegisterType(inst->VRegA_22c(inst_data), kBoolean);
+ 3257         }
+ 3258       }
+ 3259       break;
+ 3260     }
+ 3261     case Instruction::ARRAY_LENGTH: {
+ 3262       const RegType& res_type = work_line_->GetRegisterType(this, inst->VRegB_12x(inst_data));
+ 3263       if (!res_type.IsReferenceTypes() || (!res_type.IsArrayTypes() && !res_type.IsZeroOrNull())) {
+ 3264         // ie not an array or null
+ 3265         Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "array-length on non-array " << res_type;
+ 3266         return false;
+ 3267       }
+ 3268       work_line_->SetRegisterType(inst->VRegA_12x(inst_data), kInteger);
+ 3269       break;
+ 3270     }
+ 3271     case Instruction::NEW_INSTANCE: {
+
+[... omitted lines ...]
+ 5170   return true;
+ 5171 }
+ 5172
+ 5173 bool MethodVerifierImpl::VerifyFilledNewArray(const Instruction* inst, bool is_range) {
+ 5174   dex::TypeIndex type_idx;
+ 5175   if (!is_range) {
+ 5176     DCHECK_EQ(inst->Opcode(), Instruction::FILLED_NEW_ARRAY);
+ 5177     type_idx = dex::TypeIndex(inst->VRegB_35c());
+ 5178   } else {
+ 5179     DCHECK_EQ(inst->Opcode(), Instruction::FILLED_NEW_ARRAY_RANGE);
+ 5180     type_idx = dex::TypeIndex(inst->VRegB_3rc());
+ 5181   }
+ 5182   // Dex file verifier ensures that all valid type indexes reference valid descriptors and the
+ 5183   // `CheckNewArray()` ensures that the descriptor starts with an `[` before we get to the
+ 5184   // code flow verification. So, we should see only array types here.
+ 5185   const RegType& res_type = ResolveClass<CheckAccess::kYes>(type_idx);
+ 5186   DCHECK(res_type.IsArrayTypes());
+ 5187   // TODO: check Compiler::CanAccessTypeWithoutChecks returns false when res_type is unresolved
+ 5188   DCHECK(!res_type.IsUnresolvedMergedReference());
+ 5189   // Verify each input register. It's legal, if silly, for arg_count to be zero.
+ 5190   const RegType& expected_type = reg_types_.GetComponentType(res_type);
+ 5191   uint32_t arg_count = (is_range) ? inst->VRegA_3rc() : inst->VRegA_35c();
+ 5192   uint32_t arg[5];
+ 5193   if (!is_range) {
+ 5194     inst->GetVarArgs(arg);
+ 5195   }
+ 5196   for (size_t ui = 0; ui < arg_count; ui++) {
+ 5197     uint32_t get_reg = is_range ? inst->VRegC_3rc() + ui : arg[ui];
+ 5198     if (!VerifyRegisterType(get_reg, expected_type)) {
+ 5199       // Don't continue on hard failures.
+ 5200       DCHECK(flags_.have_pending_hard_failure_);
+ 5201       return false;
+ 5202     }
+ 5203     DCHECK(!flags_.have_pending_hard_failure_);
+ 5204   }
+ 5205   // filled-array result goes into "result" register
+ 5206   work_line_->SetResultRegisterType(res_type);
+ 5207   return true;
+ 5208 }
+ 5209
+ 5210 ALWAYS_INLINE
+ 5211 inline bool MethodVerifierImpl::VerifyPrimitivePut(RegType::Kind target_kind, uint32_t vregA) {
+ 5212   // Primitive assignability rules are weaker than regular assignability rules.
+ 5213   bool value_compatible;
+ 5214   uint16_t value_id = work_line_->GetRegisterTypeId(vregA);
+ 5215   if (UNLIKELY(value_id >= RegTypeCache::NumberOfRegKindCacheIds())) {
+ 5216     value_compatible = false;  // Value is not primitive.
+ 5217   } else {
+ 5218     RegType::Kind value_kind = RegTypeCache::RegKindForId(value_id);
+ 5219     if (RegType::IsIntegralTypes(target_kind)) {
+ 5220       value_compatible = RegType::IsIntegralTypes(value_kind);
+ 5221     } else if (target_kind == RegType::Kind::kFloat) {
+ 5222       value_compatible = RegType::IsFloatTypes(value_kind);
+ 5223     } else {
+ 5224       DCHECK(target_kind == RegType::Kind::kLongLo || target_kind == RegType::Kind::kDoubleLo);
+ 5225       DCHECK_LT(vregA + 1, work_line_->NumRegs());
+ 5226       uint16_t value_hi_id = work_line_->GetRegisterTypeId(vregA + 1);
+ 5227       if (target_kind == RegType::Kind::kLongLo) {
+ 5228         value_compatible =
+ 5229             RegType::IsLongTypes(value_kind) &&
+ 5230             value_hi_id == RegTypeCache::IdForRegKind(RegType::ToHighHalf(value_kind));
+ 5231       } else {
+ 5232         value_compatible =
+ 5233             RegType::IsDoubleTypes(value_kind) &&
+ 5234             value_hi_id == RegTypeCache::IdForRegKind(RegType::ToHighHalf(value_kind));
+ 5235       }
+ 5236     }
+ 5237   }
+ 5238   if (UNLIKELY(!value_compatible)) {
+ 5239     FailPrimitivePut(vregA, target_kind);
+ 5240     return false;
+ 5241   } else {
+ 5242     return true;
+ 5243   }
+ 5244 }
+ 5245
+ 5246 template <AccessType kAccType, AccessWidth kAccWidth, bool kIsPrimitive>
+ 5247 ALWAYS_INLINE inline bool MethodVerifierImpl::VerifyArrayAccess(const Instruction* inst,
+ 5248                                                                 uint16_t inst_data,
+ 5249                                                                 Instruction::Code opcode) {
+ 5250   static_assert(kIsPrimitive || kAccWidth == AccessWidth::kVreg);
+ 5251   uint16_t index_type_id = work_line_->GetRegisterTypeId(inst->VRegC_23x());
+ 5252   if (UNLIKELY(index_type_id >= RegTypeCache::NumberOfRegKindCacheIds()) ||
+ 5253       UNLIKELY(!RegType::IsArrayIndexTypes(RegTypeCache::RegKindForId(index_type_id)))) {
+ 5254     FailInvalidArrayIndex(index_type_id);
+ 5255     return false;
+ 5256   }
+ 5257
+ 5258   auto narrow_opcode_kind = [=]() {

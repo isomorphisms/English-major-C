@@ -1,5 +1,13 @@
 # English Major C
 
+**DEX architectural catalogue:** [DEX instructions in precise English](architecture/dex/README.md)
+accounts for all 256 primary byte values, with separate entries for 224
+standard instructions and 32 reserved values, all three payloads, version
+boundaries and a plaintext inventory. It is independent of the compiler's
+supported subset. [The audit](evidence/DEX-catalogue-audit.md) distinguishes
+source-table coverage from semantic review, runtime execution and ai-ci
+acceptance. The existing ARM documentation and experiments are unchanged.
+
 English Major C is an experimental programming language specified in ordinary English with lawyer-like precision. It is not a programming tutorial. A first narrowly constrained, independent English-to-ARM Thumb compiler has now been written as a concrete experiment; no general parser, type system, compiled runtime, or physical-device acceptance is claimed.
 
 **First executable experiment:** [An unknown entry is omitted from an addition](examples/unknown-entry-sum/README.md) supplies a direct English-to-Thumb assembler compiler, a source-line-aligned native listing, rejection tests, and a complete architectural trace. Its single-architecture/no-ICK/no-premature-types decision is in [the direct compiler decision record](decisions/Why%20the%20first%20compiler%20emits%20assembly%20directly.english). This experiment is not R-compatible and has not yet run on ARM hardware.
