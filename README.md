@@ -13,3 +13,5 @@ English Major C is an experimental programming language intermediary specifying 
 [What is the execution index?](What%20is%20the%20execution%20index%3F)
 
 [Internals](_/) holds the compilers, experiments, checks, captured binaries, and records.
+
+[Trace an instruction to its lowering choice](_/decisions/Trace%20a%20machine%20instruction%20back%20to%20the%20choice%20that%20produced%20it.english) connects the machine descriptions with the compiler inspection notes.
