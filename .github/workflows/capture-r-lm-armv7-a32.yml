@@ -38,7 +38,7 @@ jobs:
           arm-linux-gnueabihf-gfortran-14 --version | head -n 1
           arm-linux-gnueabihf-objdump --version | head -n 1
           mkdir -p /tmp/r-qr-arm-capture
-          cd examples/r-lm-native-x86-64
+          cd fortran
           for routine in dqrls dqrdc2 dqrsl; do
             arm-linux-gnueabihf-gfortran-14 \
               -O2 -g -fno-inline -fPIC \

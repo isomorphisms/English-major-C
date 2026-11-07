@@ -48,7 +48,7 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           mkdir -p /tmp/r-qr-arm-linked
-          cd examples/r-lm-native-x86-64
+          cd fortran
           for routine in dqrls dqrdc2 dqrsl; do
             arm-linux-gnueabihf-gfortran-14 \
               -O2 -g -fno-inline -fPIC \
@@ -57,7 +57,7 @@ jobs:
           done
           arm-linux-gnueabihf-gcc-14 -O2 -g -Wall -Wextra \
             -march=armv7-a -marm -mfpu=vfpv3-d16 -mfloat-abi=hard \
-            -c call_r_qr.c -o /tmp/r-qr-arm-linked/call_r_qr.armv7-hardfp.o
+            -c "$GITHUB_WORKSPACE/_/captures/r-lm-native-x86-64/call_r_qr.c" -o /tmp/r-qr-arm-linked/call_r_qr.armv7-hardfp.o
           arm-linux-gnueabihf-gfortran-14 \
             -march=armv7-a -marm -mfpu=vfpv3-d16 -mfloat-abi=hard \
             /tmp/r-qr-arm-linked/call_r_qr.armv7-hardfp.o \

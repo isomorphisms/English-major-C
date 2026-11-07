@@ -60,13 +60,13 @@ jobs:
           c="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
           "$c" --target=armv7a-linux-androideabi21 -march=armv7-a -marm \
             -nostdlib -static -fno-pie -no-pie -Wl,-e,_start \
-            examples/unknown-entry-sum/generated-thumb.s \
-            tests/emulation/armv7-a32-linux-entry.s \
+            arm/thumb/addition/generated-thumb.s \
+            _/tests/emulation/armv7-a32-linux-entry.s \
             -o "$RUNNER_TEMP/armv7.elf"
           "$c" --target=x86_64-linux-android21 \
             -nostdlib -static -fno-pie -no-pie -Wl,-e,_start \
-            examples/unknown-entry-sum-x86-64/generated-x86-64.s \
-            tests/emulation/x86-64-linux-entry.s \
+            x86/addition/generated-x86-64.s \
+            _/tests/emulation/x86-64-linux-entry.s \
             -o "$RUNNER_TEMP/x86-64.elf"
           file "$RUNNER_TEMP/armv7.elf" "$RUNNER_TEMP/x86-64.elf"
           sha256sum "$RUNNER_TEMP/armv7.elf" "$RUNNER_TEMP/x86-64.elf"
@@ -101,22 +101,22 @@ jobs:
           set -euo pipefail
           c="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
           sed 's/add.w r2, r2, r3/sub.w r2, r2, r3/' \
-            examples/unknown-entry-sum/generated-thumb.s > "$RUNNER_TEMP/arm-wrong.s"
-          ! cmp -s "$RUNNER_TEMP/arm-wrong.s" examples/unknown-entry-sum/generated-thumb.s
+            arm/thumb/addition/generated-thumb.s > "$RUNNER_TEMP/arm-wrong.s"
+          ! cmp -s "$RUNNER_TEMP/arm-wrong.s" arm/thumb/addition/generated-thumb.s
           "$c" --target=armv7a-linux-androideabi21 -march=armv7-a -marm \
             -nostdlib -static -fno-pie -no-pie -Wl,-e,_start \
-            "$RUNNER_TEMP/arm-wrong.s" tests/emulation/armv7-a32-linux-entry.s \
+            "$RUNNER_TEMP/arm-wrong.s" _/tests/emulation/armv7-a32-linux-entry.s \
             -o "$RUNNER_TEMP/arm-wrong.elf"
           if qemu-arm -cpu cortex-a9 "$RUNNER_TEMP/arm-wrong.elf"; then
             echo 'FAIL: mutated ARM arithmetic returned success' >&2
             exit 1
           fi
           sed 's/lea edx, \[rdx + rcx\]/lea edx, [rdx + rcx + 1]/' \
-            examples/unknown-entry-sum-x86-64/generated-x86-64.s > "$RUNNER_TEMP/x86-wrong.s"
-          ! cmp -s "$RUNNER_TEMP/x86-wrong.s" examples/unknown-entry-sum-x86-64/generated-x86-64.s
+            x86/addition/generated-x86-64.s > "$RUNNER_TEMP/x86-wrong.s"
+          ! cmp -s "$RUNNER_TEMP/x86-wrong.s" x86/addition/generated-x86-64.s
           "$c" --target=x86_64-linux-android21 \
             -nostdlib -static -fno-pie -no-pie -Wl,-e,_start \
-            "$RUNNER_TEMP/x86-wrong.s" tests/emulation/x86-64-linux-entry.s \
+            "$RUNNER_TEMP/x86-wrong.s" _/tests/emulation/x86-64-linux-entry.s \
             -o "$RUNNER_TEMP/x86-wrong.elf"
           if qemu-x86_64 -cpu qemu64 "$RUNNER_TEMP/x86-wrong.elf"; then
             echo 'FAIL: mutated x86 arithmetic returned success' >&2

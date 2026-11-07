@@ -1,0 +1,27 @@
+✔ the complete unknown-entry program produces the declared Thumb operations (4.862371ms)
+✔ an instruction without an explicitly granted English sentence is rejected (0.626721ms)
+✔ an undeclared register name is rejected (0.706293ms)
+✔ a branch to an unnamed instruction is rejected (1.101479ms)
+✔ duplicated instruction names are rejected (0.664149ms)
+✔ one physical register cannot be renamed twice (0.732617ms)
+✔ the program must have an explicit final return instruction (0.45078ms)
+✔ a different architecture cannot silently replace the chosen machine (1.254594ms)
+✔ all English instruction sentences compile deterministically to x86-64 (6.245475ms)
+✔ never silently accept ARM as an x86 source (0.581238ms)
+✔ unknown English operation is rejected (0.332697ms)
+✔ a register must be explicitly declared before use (0.507747ms)
+✔ duplicate register allocation is rejected (0.529452ms)
+✔ wrong physical calling convention is rejected (0.440191ms)
+✔ a missing instruction label is rejected (0.406815ms)
+✔ duplicate instruction labels are rejected (0.301367ms)
+✔ missing explicit machine return is rejected (0.594557ms)
+✔ flag-setting arithmetic cannot silently replace the chosen flag-preserving instruction (0.558935ms)
+✔ extra executable instructions are rejected by the specimen contract (0.304245ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 169.986563

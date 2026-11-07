@@ -24,16 +24,17 @@ jobs:
           .idric-host/edric bootstrap
           .idric-host/edric test --only idris2/basic/edric001
       - name: Compile the exact typed A32 Idric source
+        working-directory: _
         run: |
           export PATH="$GITHUB_WORKSPACE/.idric-host/.tools/bin:$PATH"
           export IDRIS2_PREFIX="$GITHUB_WORKSPACE/.idric-host/_/build/env"
-          .idric-host/build/exec/idris2 --version
-          .idric-host/build/exec/idris2 --build english-a32.ipkg
+          "$GITHUB_WORKSPACE/.idric-host/build/exec/idris2" --version
+          "$GITHUB_WORKSPACE/.idric-host/build/exec/idris2" --build english-a32.ipkg
       - name: Execute real QR evidence and rejection tests using Idric binary
         env:
-          A32_BINARY: ${{ github.workspace }}/build/exec/english-a32
+          A32_BINARY: ${{ github.workspace }}/_/build/exec/english-a32
           EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node --test research/a32-typed/test-a32.mjs
+        run: node --test _/research/a32-typed/test-a32.mjs
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: isomorphisms/ai-ci
@@ -45,8 +46,8 @@ jobs:
           EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           node .ai-ci/english-major-c/verify-a32-23.mjs \
-            "$GITHUB_WORKSPACE/build/exec/english-a32" \
-            "$GITHUB_WORKSPACE/experiments/qr-entry/ARM entry before its first call.english" \
-            "$GITHUB_WORKSPACE/examples/r-lm-native-armv7-a32/dqrls.armv7-a32.disasm.txt" \
+            "$GITHUB_WORKSPACE/_/build/exec/english-a32" \
+            "$GITHUB_WORKSPACE/arm/a32/r-qr/ARM entry before its first call.english" \
+            "$GITHUB_WORKSPACE/arm/a32/r-qr/dqrls.armv7-a32.disasm.txt" \
             "$GITHUB_WORKSPACE"
 # This workflow does not claim ARM execution or automatic merge.

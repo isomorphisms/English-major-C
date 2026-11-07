@@ -1,0 +1,177 @@
+SOURCE EXCERPT, NOT FIRST-PARTY IMPLEMENTATION.
+Source Git blob: 4820d4bfbbc1d32718c1e3bc9525da1a71929019
+Repository: LineageOS/android_art
+Ref observed: lineage-24.0 (commit 747707d6ce1c145f2249f120c692e0aeb2b8a257)
+Original line numbers follow. Omitted text is explicitly marked.
+Trailing display whitespace is omitted; the original blob is unchanged.
+
+
+[... omitted lines ...]
+    1 /*
+    2  * Copyright (C) 2012 The Android Open Source Project
+    3  *
+    4  * Licensed under the Apache License, Version 2.0 (the "License");
+    5  * you may not use this file except in compliance with the License.
+    6  * You may obtain a copy of the License at
+    7  *
+    8  *      http://www.apache.org/licenses/LICENSE-2.0
+    9  *
+   10  * Unless required by applicable law or agreed to in writing, software
+   11  * distributed under the License is distributed on an "AS IS" BASIS,
+   12  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   13  * See the License for the specific language governing permissions and
+   14  * limitations under the License.
+   15  */
+   16
+
+[... omitted lines ...]
+  607     return true;
+  608   }
+  609
+  610   HANDLER_ATTRIBUTES bool MOVE_WIDE() {
+  611     SetVRegLong(A(), GetVRegLong(B()));
+  612     return true;
+  613   }
+  614
+  615   HANDLER_ATTRIBUTES bool MOVE_WIDE_FROM16() {
+  616     SetVRegLong(A(), GetVRegLong(B()));
+  617     return true;
+  618   }
+  619
+  620   HANDLER_ATTRIBUTES bool MOVE_WIDE_16() {
+  621     SetVRegLong(A(), GetVRegLong(B()));
+
+[... omitted lines ...]
+  652     return true;
+  653   }
+  654
+  655   HANDLER_ATTRIBUTES bool MOVE_EXCEPTION() {
+  656     ObjPtr<mirror::Throwable> exception = Self()->GetException();
+  657     DCHECK(exception != nullptr) << "No pending exception on MOVE_EXCEPTION instruction";
+  658     SetVRegReference(A(), exception);
+  659     Self()->ClearException();
+  660     return true;
+  661   }
+  662
+  663   HANDLER_ATTRIBUTES bool RETURN_VOID() {
+  664     QuasiAtomic::ThreadFenceForConstructor();
+  665     JValue result;
+  666     return HandleReturn(result);
+  667   }
+  668
+  669   HANDLER_ATTRIBUTES bool RETURN() {
+
+[... omitted lines ...]
+  827     return !Self()->IsExceptionPending();
+  828   }
+  829
+  830   HANDLER_ATTRIBUTES bool MONITOR_EXIT() {
+  831     if (UNLIKELY(Self()->ObserveAsyncException())) {
+  832       return false;  // Pending exception.
+  833     }
+  834     ObjPtr<mirror::Object> obj = GetVRegReference(A());
+  835     if (UNLIKELY(obj == nullptr)) {
+  836       ThrowNullPointerExceptionFromInterpreter();
+  837       return false;  // Pending exception.
+  838     }
+  839     DoMonitorExit(Self(), &shadow_frame_, obj);
+  840     return !Self()->IsExceptionPending();
+  841   }
+  842
+  843   HANDLER_ATTRIBUTES bool CHECK_CAST() {
+  844     ObjPtr<mirror::Class> c =
+  845         ResolveVerifyAndClinit(dex::TypeIndex(B()),
+  846                                shadow_frame_.GetMethod(),
+  847                                Self(),
+  848                                false,
+  849                                !shadow_frame_.GetMethod()->SkipAccessChecks());
+  850     if (UNLIKELY(c == nullptr)) {
+  851       return false;  // Pending exception.
+  852     }
+  853     ObjPtr<mirror::Object> obj = GetVRegReference(A());
+  854     if (UNLIKELY(obj != nullptr && !obj->InstanceOf(c))) {
+  855       ThrowClassCastException(c, obj->GetClass());
+  856       return false;  // Pending exception.
+  857     }
+  858     return true;
+  859   }
+  860
+  861   HANDLER_ATTRIBUTES bool INSTANCE_OF() {
+  862     ObjPtr<mirror::Class> c =
+  863         ResolveVerifyAndClinit(dex::TypeIndex(C()),
+  864                                shadow_frame_.GetMethod(),
+  865                                Self(),
+  866                                false,
+  867                                !shadow_frame_.GetMethod()->SkipAccessChecks());
+  868     if (UNLIKELY(c == nullptr)) {
+  869       return false;  // Pending exception.
+  870     }
+  871     ObjPtr<mirror::Object> obj = GetVRegReference(B());
+  872     SetVReg(A(), (obj != nullptr && obj->InstanceOf(c)) ? 1 : 0);
+  873     return true;
+  874   }
+  875
+  876   HANDLER_ATTRIBUTES bool ARRAY_LENGTH() {
+  877     ObjPtr<mirror::Object> array = GetVRegReference(B());
+  878     if (UNLIKELY(array == nullptr)) {
+  879       ThrowNullPointerExceptionFromInterpreter();
+  880       return false;  // Pending exception.
+  881     }
+  882     SetVReg(A(), array->AsArray()->GetLength());
+  883     return true;
+  884   }
+  885
+  886   HANDLER_ATTRIBUTES bool NEW_INSTANCE() {
+  887     ObjPtr<mirror::Object> obj = nullptr;
+
+[... omitted lines ...]
+ 1089     return HandleAGet<mirror::ObjectArray<mirror::Object>>(&InstructionHandler::SetVRegReference);
+ 1090   }
+ 1091
+ 1092   HANDLER_ATTRIBUTES bool APUT_BOOLEAN() {
+ 1093     return HandleAPut<mirror::BooleanArray>(GetVReg(A()));
+ 1094   }
+ 1095
+ 1096   HANDLER_ATTRIBUTES bool APUT_BYTE() {
+ 1097     return HandleAPut<mirror::ByteArray>(GetVReg(A()));
+ 1098   }
+ 1099
+ 1100   HANDLER_ATTRIBUTES bool APUT_CHAR() {
+ 1101     return HandleAPut<mirror::CharArray>(GetVReg(A()));
+
+[... omitted lines ...]
+ 1434     return true;
+ 1435   }
+ 1436
+ 1437   HANDLER_ATTRIBUTES bool DIV_INT() {
+ 1438     return DoIntDivide(shadow_frame_, A(), GetVReg(B()), GetVReg(C()));
+ 1439   }
+ 1440
+ 1441   HANDLER_ATTRIBUTES bool REM_INT() {
+ 1442     return DoIntRemainder(shadow_frame_, A(), GetVReg(B()), GetVReg(C()));
+ 1443   }
+ 1444
+ 1445   HANDLER_ATTRIBUTES bool SHL_INT() {
+ 1446     SetVReg(A(), GetVReg(B()) << (GetVReg(C()) & 0x1f));
+ 1447     return true;
+ 1448   }
+ 1449
+ 1450   HANDLER_ATTRIBUTES bool SHR_INT() {
+ 1451     SetVReg(A(), GetVReg(B()) >> (GetVReg(C()) & 0x1f));
+
+[... omitted lines ...]
+ 1545     return true;
+ 1546   }
+ 1547
+ 1548   HANDLER_ATTRIBUTES bool REM_FLOAT() {
+ 1549     SetVRegFloat(A(), fmodf(GetVRegFloat(B()), GetVRegFloat(C())));
+ 1550     return true;
+ 1551   }
+ 1552
+ 1553   HANDLER_ATTRIBUTES bool ADD_DOUBLE() {
+ 1554     SetVRegDouble(A(), GetVRegDouble(B()) + GetVRegDouble(C()));
+ 1555     return true;
+ 1556   }
+ 1557
+ 1558   HANDLER_ATTRIBUTES bool SUB_DOUBLE() {
+ 1559     SetVRegDouble(A(), GetVRegDouble(B()) - GetVRegDouble(C()));

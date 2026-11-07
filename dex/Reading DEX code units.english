@@ -1,0 +1,86 @@
+READING DEX CODE UNITS WITHOUT CONFUSING THEM WITH ARM INSTRUCTIONS.
+
+These are deliberately authored CODE-UNIT specimens with English
+interpretations checked against the pinned source tables. They are not
+captured output from an assembler, disassembler, ART run or physical device.
+No claim is made that these snippets alone form complete valid DEX files.
+Method prototypes, frames, metadata and handler tables remain necessary.
+
+SPECIMEN ONE: AN INTEGER ADDITION.
+
+Assume a static method returning int with at least three registers.
+Its instruction code units, in offset order, are:
+  index 0: 7012
+  index 1: 3112
+  index 2: 0290
+  index 3: 0100
+  index 4: 020f
+
+The low byte 12 identifies const/4. At index zero, the high nibbles mean
+literal seven and destination v0. At index one they mean literal three
+and destination v1. Index two begins add-int, format 23x. Its high byte
+selects destination v2; the following unit supplies source B=v0 in its
+low byte and source C=v1 in its high byte. Read seven and three, retain
+their thirty-two-bit sum ten and write v2. Next execute index four,
+return v2. The return ends this invocation; it does not fetch index five.
+
+The unit 0100 at index three is an OPERAND of add-int. Looking at it
+without the preceding instruction boundary could misleadingly resemble
+a packed-switch payload identifier. It is not a payload at this location.
+
+SPECIMEN TWO: DIVISION AND OVERFLOW.
+
+The two units 0293 0100 identify div-int v2, v0, v1. Assume v0 contains
+0x80000000 and v1 contains 0xffffffff, interpreted as minus 2³¹ and minus
+one. The result in v2 is 0x80000000 and normal continuation advances by
+two units. No signed-overflow exception occurs. If v1 instead contains
+zero, no normal quotient is supplied and exception dispatch begins.
+This is a stated source-semantic witness, not an executed arithmetic oracle.
+
+SPECIMEN THREE: THE SAME NOP BYTE DOES NOT GRANT PAYLOAD EXECUTION.
+
+A packed switch at index zero can begin with 002b 0004 0000.
+Its table is at index four, since its signed displacement is four.
+Index three may contain 000e, a return-void for the unmatched path.
+An aligned one-case table beginning at index four can be:
+  0100 0001 0007 0000 0003 0000
+
+Identifier 0100 and count one introduce first key seven and target three.
+The target is index THREE, relative to the switch at zero, not index seven
+relative to the payload at four. Both a match and a miss in this deliberately
+simple specimen reach the return at index three. The table is never fetched
+as an instruction. Changing it to begin at an odd code-unit offset violates
+its alignment requirement even though all the listed halfwords still fit.
+
+An empty sparse table is 0200 0000 and occupies two code units.
+A byte-array payload for three elements 11,22,33 in hexadecimal is
+  0300 0001 0003 0000 2211 0033
+and occupies six code units. The high zero byte of its final unit is
+padding, not a fourth element. Neither specimen is a standard extra opcode
+with a primary byte greater than 0xff.
+
+SPECIMEN FOUR: A RESULT MUST HAVE ITS PRODUCER.
+
+If a valid invocation returning int completes normally, the immediately
+following move-result may read its pending value. Branching directly to
+that same instruction does not create a value. Similarly move-exception
+requires handler entry; a decoder's ability to print the mnemonic does
+not establish that a normal branch may enter it.
+
+HOW TO INSPECT REAL COMPILER OUTPUT.
+
+The canonical android-NDK DEX backend retains .checked.anf, .dex.plan,
+.smali and .dex files beside one another. Begin with the actual .dex file's
+version and code_item, then establish instruction boundaries with a decoder
+qualified for that version. Preserve its exact name/version and original
+output. Match the numerical opcode to this catalogue; preserve operands,
+code-unit offsets, referenced tables, branch targets and payload extents.
+Do not infer the supported ISA from only the mnemonics that this compiler
+currently emits. Do not describe the backend's .smali plan rendering as an
+independent disassembly of its emitted .dex bytes.
+
+The independent dexlib2 enum frozen with this catalogue proves a second
+source mapping, not that a decoder executable was run here. An eventual
+captured-byte example must name the exact producing artifact, its digest,
+the decoder identity, and what actually ran. Existing ARM byte witnesses
+remain unchanged and are not relabeled as DEX evidence.

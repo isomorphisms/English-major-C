@@ -39,14 +39,14 @@ jobs:
       - name: Execute original QR bytes and compare each English state transition
         run: |
           set -euo pipefail
-          node --check experiments/qr-entry/english-state.mjs
-          node --check experiments/qr-entry/elf-evidence.mjs
-          node --check experiments/qr-entry/check-machine-execution.mjs
-          node experiments/qr-entry/check-machine-execution.mjs "$RUNNER_TEMP/qr-entry-evidence"
+          node --check _/experiments/qr-entry/english-state.mjs
+          node --check _/experiments/qr-entry/elf-evidence.mjs
+          node --check _/experiments/qr-entry/check-machine-execution.mjs
+          node _/experiments/qr-entry/check-machine-execution.mjs "$RUNNER_TEMP/qr-entry-evidence"
           cat "$RUNNER_TEMP/qr-entry-evidence/receipt.json"
       - name: Identify debugger conversion failure without hiding failed execution
         if: failure()
-        run: node experiments/qr-entry/inspect-debugger-registers.mjs
+        run: node _/experiments/qr-entry/inspect-debugger-registers.mjs
       - name: Preserve exact states, input bytes, debugger logs and linked mode map
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

@@ -22,13 +22,13 @@ jobs:
         with:
           node-version: '22'
       - name: Verify the small allowed and rejected English grammar
-        run: node --test tests/compile-english-assembly.test.mjs
+        run: node --test _/tests/compile-english-assembly.test.mjs
       - name: Compile the reviewed English source and compare the committed assembly
         run: |
-          node tools/compile-english-assembly.mjs \
-            'examples/unknown-entry-sum/An unknown entry is omitted from an addition.english' \
+          node _/tools/compile-english-assembly.mjs \
+            'arm/thumb/addition/An unknown entry is omitted from an addition.english' \
             "${RUNNER_TEMP}/generated-thumb.s"
-          cmp "${RUNNER_TEMP}/generated-thumb.s" examples/unknown-entry-sum/generated-thumb.s
+          cmp "${RUNNER_TEMP}/generated-thumb.s" arm/thumb/addition/generated-thumb.s
 
 # This workflow checks ONLY source translation and its checked-in assembly.
 # It does not assemble/link an ARM binary, run a physical device, or replace

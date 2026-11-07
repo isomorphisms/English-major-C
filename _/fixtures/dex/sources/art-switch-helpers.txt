@@ -1,0 +1,110 @@
+SOURCE EXCERPT, NOT FIRST-PARTY IMPLEMENTATION.
+Source Git blob: 4178db05f0d3b1e2bccb20c92877ce74f2d549fb
+Repository: LineageOS/android_art
+Ref observed: lineage-24.0 (commit 747707d6ce1c145f2249f120c692e0aeb2b8a257)
+Original line numbers follow. Omitted text is explicitly marked.
+Trailing display whitespace is omitted; the original blob is unchanged.
+
+
+[... omitted lines ...]
+    1 /*
+    2  * Copyright (C) 2012 The Android Open Source Project
+    3  *
+    4  * Licensed under the Apache License, Version 2.0 (the "License");
+    5  * you may not use this file except in compliance with the License.
+    6  * You may obtain a copy of the License at
+    7  *
+    8  *      http://www.apache.org/licenses/LICENSE-2.0
+    9  *
+   10  * Unless required by applicable law or agreed to in writing, software
+   11  * distributed under the License is distributed on an "AS IS" BASIS,
+   12  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   13  * See the License for the specific language governing permissions and
+   14  * limitations under the License.
+   15  */
+   16
+
+[... omitted lines ...]
+  441
+  442 // Handles packed-switch instruction.
+  443 // Returns the branch offset to the next instruction to execute.
+  444 static inline int32_t DoPackedSwitch(const Instruction* inst,
+  445                                      const ShadowFrame& shadow_frame,
+  446                                      uint16_t inst_data)
+  447     REQUIRES_SHARED(Locks::mutator_lock_) {
+  448   DCHECK(inst->Opcode() == Instruction::PACKED_SWITCH);
+  449   const uint16_t* switch_data = reinterpret_cast<const uint16_t*>(inst) + inst->VRegB_31t();
+  450   int32_t test_val = shadow_frame.GetVReg(inst->VRegA_31t(inst_data));
+  451   DCHECK_EQ(switch_data[0], static_cast<uint16_t>(Instruction::kPackedSwitchSignature));
+  452   uint16_t size = switch_data[1];
+  453   if (size == 0) {
+  454     // Empty packed switch, move forward by 3 (size of PACKED_SWITCH).
+  455     return 3;
+  456   }
+  457   const int32_t* keys = reinterpret_cast<const int32_t*>(&switch_data[2]);
+  458   DCHECK_ALIGNED(keys, 4);
+  459   int32_t first_key = keys[0];
+  460   const int32_t* targets = reinterpret_cast<const int32_t*>(&switch_data[4]);
+  461   DCHECK_ALIGNED(targets, 4);
+  462   int32_t index = test_val - first_key;
+  463   if (index >= 0 && index < size) {
+  464     return targets[index];
+  465   } else {
+  466     // No corresponding value: move forward by 3 (size of PACKED_SWITCH).
+  467     return 3;
+  468   }
+  469 }
+  470
+  471 // Handles sparse-switch instruction.
+  472 // Returns the branch offset to the next instruction to execute.
+  473 static inline int32_t DoSparseSwitch(const Instruction* inst, const ShadowFrame& shadow_frame,
+  474                                      uint16_t inst_data)
+  475     REQUIRES_SHARED(Locks::mutator_lock_) {
+  476   DCHECK(inst->Opcode() == Instruction::SPARSE_SWITCH);
+  477   const uint16_t* switch_data = reinterpret_cast<const uint16_t*>(inst) + inst->VRegB_31t();
+  478   int32_t test_val = shadow_frame.GetVReg(inst->VRegA_31t(inst_data));
+  479   DCHECK_EQ(switch_data[0], static_cast<uint16_t>(Instruction::kSparseSwitchSignature));
+  480   uint16_t size = switch_data[1];
+  481   // Return length of SPARSE_SWITCH if size is 0.
+  482   if (size == 0) {
+  483     return 3;
+  484   }
+  485   const int32_t* keys = reinterpret_cast<const int32_t*>(&switch_data[2]);
+  486   DCHECK_ALIGNED(keys, 4);
+  487   const int32_t* entries = keys + size;
+  488   DCHECK_ALIGNED(entries, 4);
+  489   int lo = 0;
+  490   int hi = size - 1;
+  491   while (lo <= hi) {
+  492     int mid = (lo + hi) / 2;
+  493     int32_t foundVal = keys[mid];
+  494     if (test_val < foundVal) {
+  495       hi = mid - 1;
+  496     } else if (test_val > foundVal) {
+  497       lo = mid + 1;
+  498     } else {
+  499       return entries[mid];
+  500     }
+  501   }
+  502   // No corresponding value: move forward by 3 (size of SPARSE_SWITCH).
+  503   return 3;
+  504 }
+  505
+  506 // We execute any instrumentation events triggered by throwing and/or handing the pending exception
+  507 // and change the shadow_frames dex_pc to the appropriate exception handler if the current method
+  508 // has one. If the exception has been handled and the shadow_frame is now pointing to a catch clause
+  509 // we return true. If the current method is unable to handle the exception we return false.
+  510 // This function accepts a null Instrumentation* as a way to cause instrumentation events not to be
+  511 // reported.
+  512 // TODO We might wish to reconsider how we cause some events to be ignored.
+  513 EXPORT bool MoveToExceptionHandler(Thread* self,
+  514                                    ShadowFrame& shadow_frame,
+  515                                    bool skip_listeners,
+  516                                    bool skip_throw_listener) REQUIRES_SHARED(Locks::mutator_lock_);
+  517 NO_RETURN EXPORT void UnexpectedOpcode(const Instruction* inst, const ShadowFrame& shadow_frame)
+  518     COLD_ATTR
+  519     REQUIRES_SHARED(Locks::mutator_lock_);
+  520
+  521 // Set true if you want TraceExecution invocation before each bytecode execution.
+  522 constexpr bool kTraceExecutionEnabled = false;
+  523

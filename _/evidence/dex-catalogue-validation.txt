@@ -1,0 +1,2 @@
+PASS	inventory	{"primary":256,"standard":224,"reserved":32,"formats":26,"source_facts":13,"decoder":"source enum, not executed decoder","semantics":"source-reviewed prose; not execution or formal equivalence","ai_ci":"NOT_RUN"}
+PASS	rejection-controls	{"deliberately_bad_fixtures_rejected":10,"restored_good":"PASS"}

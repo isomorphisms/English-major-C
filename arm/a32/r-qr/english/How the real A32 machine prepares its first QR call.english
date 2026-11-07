@@ -1,0 +1,199 @@
+How the real A32 machine prepares its first QR call
+==================================================
+
+This is a deliberately bottom-up symbolic account of the actual
+instruction bytes 0x0000 through 0x005c in the original
+../dqrls.armv7-a32.disasm.txt. No mathematical QR operation is
+assumed as an explanation. The x86 counterpart is separately
+preserved in English Major C draft PR #7 at
+_/captures/r-lm-native-x86-64/english-translation/
+Following the first actual QR call one memory operation at a time.english
+
+This account is a manually derived machine-state correspondence.
+It is NOT an observed ARM runtime trace, formal ARM instruction
+verification, or QEMU execution of the softfp object. It uses the
+AAPCS32 base procedure-call contract of the historical softfp build.
+
+Begin with exactly named pointers
+---------------------------------
+Let EntryStackPointer be the 32-bit byte address in SP when the
+dqrls_ routine first begins executing. AAPCS32 provides the first
+four pointer arguments in R0, R1, R2 and R3, and the additional
+pointer arguments in consecutive four-byte stack slots beginning
+at EntryStackPointer. The routine signature is:
+
+  dqrls(x, n, p, y, ny, tol, b, rsd, qty, k, jpvt, qraux, work)
+
+The incoming register values before instruction 0x0000 are:
+  R0 = PointerToXArray.
+  R1 = PointerToNInteger.
+  R2 = PointerToPInteger.
+  R3 = PointerToYArray.
+
+The original stack contents include:
+  [EntryStackPointer +  0] = PointerToNYInteger;
+  [EntryStackPointer +  4] = PointerToToleranceDouble;
+  [EntryStackPointer +  8] = PointerToBArray;
+  [EntryStackPointer + 12] = PointerToResidualArray;
+  [EntryStackPointer + 16] = PointerToQtyArray;
+  [EntryStackPointer + 20] = PointerToKInteger;
+  [EntryStackPointer + 24] = PointerToPivotArray;
+  [EntryStackPointer + 28] = PointerToQRAuxiliaryArray;
+  [EntryStackPointer + 32] = PointerToWorkArray.
+
+These are POINTERS, because this Fortran interface passes arguments
+by reference. An integer dimension pointer is not itself a dimension.
+Do not apply this entry layout to the x86-64 calling convention:
+that other architecture has six initial pointer argument registers
+and a different machine call stack.
+
+Instruction-by-instruction preparation
+-------------------------------------
+0x0000, machine word E92D4FF0, PUSH {R4,R5,R6,R7,R8,R9,SL,FP,LR}:
+  Save nine old 32-bit register values, allocating 36 bytes in
+  the full-descending stack. SP now equals EntryStackPointer - 36.
+  SL means R10 and FP means R11; they are not extra registers.
+
+0x0004, E1A06003, MOV R6,R3:
+  Preserve the original Y-array pointer in R6. No array data is
+  dereferenced. R3 still contains PointerToYArray.
+
+0x0008, E592C000, LDR IP,[R2]:
+  Read four bytes from PointerToPInteger and store their raw bits
+  in IP (R12). This is the actual integer p, not its address.
+
+0x000C, E24DD04C, SUB SP,SP,#76:
+  Allocate another 76 bytes below the nine saved registers.
+  SP now equals EntryStackPointer - 112. Call this current
+  pointer FrameStackPointer. No P or Y array element is changed.
+
+0x0010, E5914000, LDR R4,[R1]:
+  Read the four bytes of integer n into R4.
+
+0x0014, E1A03002, MOV R3,R2:
+  Replace R3 with PointerToPInteger. This overwrites its earlier
+  Y pointer copy but Y was saved in R6 at 0x0004.
+
+0x0018, E1A0A001, MOV SL,R1:
+  Save PointerToNInteger in SL (R10).
+
+0x001C, E1CC8FCC, BIC R8,IP,IP,ASR #31:
+  Shift the sign bit of IP across a 32-bit mask. If p was negative,
+  the mask is all ones and R8 becomes zero; otherwise the mask
+  is zero and R8 keeps the 32-bit p bit pattern. This is a
+  machine-selected nonnegative bound, not the original p pointer.
+
+0x0020, E59DC074, LDR IP,[SP,#116]:
+  FrameStackPointer + 116 equals EntryStackPointer + 4.
+  Read PointerToToleranceDouble into IP. This reads one pointer,
+  not the floating-point tolerance itself.
+
+0x0024, E1C44FC4, BIC R4,R4,R4,ASR #31:
+  Similarly convert negative signed n into zero, or retain its
+  original nonnegative 32-bit representation. Do not call this
+  an unsigned absolute-value computation.
+
+0x0028, E59D2084, LDR R2,[SP,#132]:
+  FrameStackPointer + 132 = EntryStackPointer + 20.
+  Read PointerToKInteger into R2.
+
+0x002C, E58DC000, STR IP,[SP]:
+  Store the tolerance pointer at FrameStackPointer + 0, the
+  location of the fifth argument in the next AAPCS32 call.
+
+0x0030, E59DC088, LDR IP,[SP,#136]:
+  Read PointerToPivotArray from EntryStackPointer + 24.
+
+0x0034, E58D2004, STR R2,[SP,#4]:
+  Store PointerToKInteger into the next call's sixth-argument
+  slot at FrameStackPointer + 4.
+
+0x0038, E58DC00C, STR IP,[SP,#12]:
+  Store PointerToPivotArray into the next call's eighth-argument
+  slot at FrameStackPointer + 12.
+
+0x003C, E59D208C, LDR R2,[SP,#140]:
+  Read PointerToQRAuxiliaryArray from EntryStackPointer + 28.
+
+0x0040, E59DC090, LDR IP,[SP,#144]:
+  Read PointerToWorkArray from EntryStackPointer + 32.
+
+0x0044, E58D2008, STR R2,[SP,#8]:
+  Store PointerToQRAuxiliaryArray in the seventh-argument slot.
+
+0x0048, E1A02001, MOV R2,R1:
+  Replace R2 (which had contained qraux) with PointerToNInteger,
+  so the next call's THIRD argument is another pointer to n.
+
+0x004C, E58DC010, STR IP,[SP,#16]:
+  Store PointerToWorkArray into the ninth-argument slot.
+
+0x0050, E58D0028, STR R0,[SP,#40]:
+  Save PointerToXArray in private local stack storage for later
+  use when this routine resumes.
+
+0x0054, E58D302C, STR R3,[SP,#44]:
+  Save PointerToPInteger in private local storage.
+
+0x0058, E58D8038, STR R8,[SP,#56]:
+  Save the calculated nonnegative p bound in private local storage.
+
+0x005C, EBFFFFFE, BL 0 <dqrdc2_>:
+  Store the address of the following A32 instruction, 0x0060
+  in this unlinked coordinate system, in LR, and transfer control
+  to the symbol dqrdc2_ after the R_ARM_CALL linker relocation
+  has been resolved. The printed object-file destination 0 is a
+  relocation placeholder, NOT the literal runtime call target.
+
+The exact outbound call arguments at 0x005C are therefore:
+  R0 => x (PointerToXArray).
+  R1 => n (PointerToNInteger).
+  R2 => n (PointerToNInteger again).
+  R3 => p (PointerToPInteger).
+  [FrameStackPointer +  0] => tol.
+  [FrameStackPointer +  4] => k.
+  [FrameStackPointer +  8] => qraux.
+  [FrameStackPointer + 12] => jpvt.
+  [FrameStackPointer + 16] => work.
+
+Now, and only after deriving those pointers, cross-check the
+source Fortran statement in ../../r-lm-native-x86-64/dqrls.f,
+which reads:
+
+  call dqrdc2(x,n,n,p,tol,k,qraux,jpvt,work)
+
+Every argument matches the independently inspected ARM machine
+preparation. This establishes a concrete source/calling-boundary
+correspondence for these entry instructions and under the stated
+AAPCS32 premises. It does not establish the effect of dqrdc2_'s
+unexamined arithmetic on its input arrays, or of BLAS library calls.
+
+Why this is different from the x86-64 entry machine
+---------------------------------------------------
+The corresponding x86-64 object moves six arguments through
+RDI, RSI, RDX, RCX, R8 and R9 before pushing additional pointers
+onto its stack, and its CALL pushes a return address there.
+This ARM routine receives only four pointer arguments in R0-R3,
+uses a preallocated stack frame for five outbound arguments, and
+its BL stores the return address in LR. Both are legitimate
+machine-specific ways to enter the same R Fortran routine.
+Neither is the other's bytewise instruction translation.
+
+In both cases the true next execution index must account for
+the architecture's instruction width and branching rules:
+A32 ordinary completion advances the byte address by four,
+while x86-64 uses the actual variable instruction length.
+An ARM-state read of PC as a DATA operand is generally A+8,
+not the A+4 next-instruction address.
+
+Evidence and unresolved boundaries
+----------------------------------
+This derivation is exact about the listed pointer and stack
+arithmetic under the declared entry ABI; it is not a trace
+from executing the object under QEMU. To validate a complete
+numerical result, the linked runtime must also specify dynamic
+BLAS, Fortran runtime, memory mappings, VFP status, and calls.
+The separate parent ARM hardfp linked numerical smoke is
+different from this softfp object and must never be used as
+evidence of ABI identity or an exact instruction trace for this
+unlinked specimen.
