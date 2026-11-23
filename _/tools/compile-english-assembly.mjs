@@ -22,6 +22,7 @@ export function compileEnglishToThumbAssembly(source) {
   let sawArchitectureDeclaration = false;
   let sawExecutableInstruction = false;
   let nextExpectedDeclaration = true;
+  let functionName;
 
   function fail(line, message) { throw new Error(`English line ${line}: ${message}`); }
   function getRegister(name, line) {
@@ -52,6 +53,14 @@ export function compileEnglishToThumbAssembly(source) {
     if (!sawArchitectureDeclaration) fail(line, 'Declare the physical instruction set first.');
 
     let match;
+    if ((match = /^Name this function "([A-Za-z_][A-Za-z_0-9]*)"\.$/.exec(text))) {
+      if (functionName || registerNames.size || !nextExpectedDeclaration)
+        fail(line, 'Name the function once, immediately after the architecture.');
+      if (match[1].startsWith('english_instruction_'))
+        fail(line, 'The function name would conflict with local instruction names.');
+      functionName = match[1];
+      continue;
+    }
     if ((match = /^Name register (zero|one|two|three|twelve) "([^"]+)"\.$/.exec(text))) {
       if (!nextExpectedDeclaration) fail(line, 'Name registers before the first instruction.');
       const register = physicalRegisterNumbers.get(match[1]);
@@ -79,6 +88,14 @@ export function compileEnglishToThumbAssembly(source) {
       addBranch(line, 'beq.n', match[1], text);
     } else if ((match = /^Load exactly four bytes from the address in "([^"]+)" into "([^"]+)"\.$/.exec(text))) {
       addInstruction(line, `ldr.w ${getRegister(match[2], line)}, [${getRegister(match[1], line)}]`, text);
+    } else if ((match = /^Load exactly four bytes from ([0-9]+) bytes beyond the address in "([^"]+)" into "([^"]+)"\.$/.exec(text))) {
+      const offset = Number(match[1]);
+      if (offset > 4095) fail(line, 'The Thumb word load needs an offset from 0 to 4095.');
+      addInstruction(line, `ldr.w ${getRegister(match[3], line)}, [${getRegister(match[2], line)}, #${offset}]`, text);
+    } else if ((match = /^Subtract ([0-9]+) from "([^"]+)" and put the result into "([^"]+)" without changing the condition flags\.$/.exec(text))) {
+      const offset = Number(match[1]);
+      if (offset > 4095) fail(line, 'The Thumb wide subtraction needs an immediate from 0 to 4095.');
+      addInstruction(line, `subw ${getRegister(match[3], line)}, ${getRegister(match[2], line)}, #${offset}`, text);
     } else if ((match = /^Increase "([^"]+)" by four without changing the condition flags\.$/.exec(text))) {
       const register = getRegister(match[1], line);
       addInstruction(line, `add.w ${register}, ${register}, #4`, text);
@@ -109,6 +126,7 @@ export function compileEnglishToThumbAssembly(source) {
   if (emittedInstructions[emittedInstructions.length - 1]?.nativeInstruction !== 'bx lr')
     throw new Error('The initial compiler requires an explicit final return through the link register.');
 
+  const symbol = functionName ?? 'add_all_known_entries_in_a_sequence';
   const output = [
     '@ Compiled from the English Major C source; source line numbers are retained.',
     '@ The input is an ARMv7-A Thumb program, not R code and not ICK output.',
@@ -116,17 +134,17 @@ export function compileEnglishToThumbAssembly(source) {
     '.arch armv7-a',
     '.thumb',
     '.text',
-    '.global add_all_known_entries_in_a_sequence',
-    '.type add_all_known_entries_in_a_sequence, %function',
+    `.global ${symbol}`,
+    `.type ${symbol}, %function`,
     '.thumb_func',
-    'add_all_known_entries_in_a_sequence:',
+    `${symbol}:`,
   ];
   for (const step of emittedInstructions) {
     if (step.kind === 'label') output.push(`${step.name}:`);
     else output.push(`    ${step.nativeInstruction}`);
     output.push(`    @ English line ${step.line}: ${step.text}`);
   }
-  output.push('.size add_all_known_entries_in_a_sequence, .-add_all_known_entries_in_a_sequence', '');
+  output.push(`.size ${symbol}, .-${symbol}`, '');
   return output.join('\n');
 }
 

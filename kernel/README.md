@@ -31,3 +31,6 @@ images.
 English Major C translations, reference disassembly, the execution-index trace,
 and independent ai-ci verification must be written and tested separately.
 A source copy by itself is not compiler, emulation, or kernel execution evidence.
+
+The [Task 12 lookup](../arm/thumb/identity-find/) now has an English program,
+Thumb assembly and an emulated search trace.

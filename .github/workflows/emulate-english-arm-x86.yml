@@ -123,6 +123,12 @@ jobs:
             exit 1
           fi
           echo 'PASS: both emulators rejected deliberately wrong arithmetic'
+      - name: Execute Task 12 list search and compare both traces
+        run: |
+          python3 -m venv "$RUNNER_TEMP/list-trace-env"
+          "$RUNNER_TEMP/list-trace-env/bin/pip" install unicorn==2.1.4 pyelftools==0.32
+          "$RUNNER_TEMP/list-trace-env/bin/python" _/tests/identity-find/check.py \
+            "$NDK_ROOT" "$RUNNER_TEMP/identity-find"
       - name: Retain binaries and machine-instruction traces
         uses: actions/upload-artifact@v4
         with:
@@ -135,6 +141,7 @@ jobs:
             ${{ runner.temp }}/x86-64.disassembly.txt
             ${{ runner.temp }}/armv7.trace
             ${{ runner.temp }}/x86-64.trace
+            ${{ runner.temp }}/identity-find/
 
 # These freestanding binaries issue only Linux exit syscalls; no Bionic,
 # libc, Android APK or shared runtime is claimed. ARM harness is A32, while
