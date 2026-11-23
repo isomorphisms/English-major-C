@@ -78,8 +78,10 @@ export function compileEnglishToThumbAssembly(source) {
       emittedInstructions.push({ kind: 'label', line, name: label, text });
     } else if ((match = /^Put zero into "([^"]+)" without changing the condition flags\.$/.exec(text))) {
       addInstruction(line, `mov.w ${getRegister(match[1], line)}, #0`, text);
-    } else if ((match = /^Put 65535 into the low sixteen bits of "([^"]+)" and zero into its high sixteen bits\.$/.exec(text))) {
-      addInstruction(line, `movw ${getRegister(match[1], line)}, #65535`, text);
+    } else if ((match = /^Put ([0-9]+) into the low sixteen bits of "([^"]+)" and zero into its high sixteen bits\.$/.exec(text))) {
+      const immediate = Number(match[1]);
+      if (immediate > 65535) fail(line, 'The low halfword must fit in sixteen bits.');
+      addInstruction(line, `movw ${getRegister(match[2], line)}, #${immediate}`, text);
     } else if ((match = /^Put 65535 into the high sixteen bits of "([^"]+)" without changing its low sixteen bits\.$/.exec(text))) {
       addInstruction(line, `movt ${getRegister(match[1], line)}, #65535`, text);
     } else if ((match = /^Compare "([^"]+)" with zero and update the condition flags\.$/.exec(text))) {
@@ -96,6 +98,17 @@ export function compileEnglishToThumbAssembly(source) {
       const offset = Number(match[1]);
       if (offset > 4095) fail(line, 'The Thumb wide subtraction needs an immediate from 0 to 4095.');
       addInstruction(line, `subw ${getRegister(match[3], line)}, ${getRegister(match[2], line)}, #${offset}`, text);
+    } else if ((match = /^Store exactly four bytes from "([^"]+)" at ([0-9]+) bytes beyond the address in "([^"]+)"\.$/.exec(text))) {
+      const offset = Number(match[2]);
+      if (offset > 4095) fail(line, 'The Thumb word store needs an offset from 0 to 4095.');
+      addInstruction(line, `str.w ${getRegister(match[1], line)}, [${getRegister(match[3], line)}, #${offset}]`, text);
+    } else if ((match = /^Call the function named "([A-Za-z_][A-Za-z_0-9]*)" and put the return address into the link register\.$/.exec(text))) {
+      if (match[1].startsWith('english_instruction_')) fail(line, 'Call a function, not a local instruction name.');
+      addInstruction(line, `bl ${match[1]}`, text);
+    } else if (text === 'Push register four and the link register onto the descending stack.') {
+      addInstruction(line, 'push {r4, lr}', text);
+    } else if (text === 'Pop register four and the link register from the descending stack.') {
+      addInstruction(line, 'pop.w {r4, lr}', text);
     } else if ((match = /^Increase "([^"]+)" by four without changing the condition flags\.$/.exec(text))) {
       const register = getRegister(match[1], line);
       addInstruction(line, `add.w ${register}, ${register}, #4`, text);

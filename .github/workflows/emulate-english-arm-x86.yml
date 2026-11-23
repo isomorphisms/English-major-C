@@ -129,6 +129,10 @@ jobs:
           "$RUNNER_TEMP/list-trace-env/bin/pip" install unicorn==2.1.4 pyelftools==0.32
           "$RUNNER_TEMP/list-trace-env/bin/python" _/tests/identity-find/check.py \
             "$NDK_ROOT" "$RUNNER_TEMP/identity-find"
+      - name: Verify Task 12 deletion and the release callback
+        run: |
+          "$RUNNER_TEMP/list-trace-env/bin/python" -B _/tests/identity-find/check_destroy.py \
+            "$NDK_ROOT" "$RUNNER_TEMP/identity-destroy"
       - name: Retain binaries and machine-instruction traces
         uses: actions/upload-artifact@v4
         with:
@@ -142,6 +146,7 @@ jobs:
             ${{ runner.temp }}/armv7.trace
             ${{ runner.temp }}/x86-64.trace
             ${{ runner.temp }}/identity-find/
+            ${{ runner.temp }}/identity-destroy/
 
 # These freestanding binaries issue only Linux exit syscalls; no Bionic,
 # libc, Android APK or shared runtime is claimed. ARM harness is A32, while
