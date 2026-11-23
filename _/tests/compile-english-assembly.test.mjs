@@ -60,3 +60,16 @@ test('Task 12 exports its own function and respects the T32 immediate widths', (
   assert.throws(() => compile(identity.replace('20 bytes beyond', '4096 bytes beyond')), /offset/);
   assert.throws(() => compile(identity.replace('english_identity_find', 'english_instruction_conflict')), /conflict/);
 });
+
+const destroy = readFileSync(resolve(here, '../../arm/thumb/identity-destroy/identity-destroy.english'), 'utf8');
+test('Task 12 deletion lowers the two linked calls, preserving the return address', () => {
+  const output = compile(destroy);
+  assert.match(output, /push \{r4, lr\}/);
+  assert.match(output, /bl english_identity_find/);
+  assert.match(output, /str\.w r2, \[r1, #4\]/);
+  assert.match(output, /bl identity_release/);
+  assert.match(output, /pop\.w \{r4, lr\}/);
+  assert.throws(() => compile(destroy.replace('at 4 bytes beyond', 'at 4096 bytes beyond')), /offset/);
+  assert.throws(() => compile(destroy.replace('Put 290', 'Put 65536')), /halfword/);
+  assert.throws(() => compile(destroy.replace('named "identity_release"', 'named "english_instruction_fake"')), /local instruction/);
+});

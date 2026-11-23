@@ -34,3 +34,5 @@ A source copy by itself is not compiler, emulation, or kernel execution evidence
 
 The [Task 12 lookup](../arm/thumb/identity-find/) now has an English program,
 Thumb assembly and an emulated search trace.
+Its [deletion companion](../arm/thumb/identity-destroy/) checks which links
+change and which containing identity reaches the release callback.

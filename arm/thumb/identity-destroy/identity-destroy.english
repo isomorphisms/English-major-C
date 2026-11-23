@@ -1,0 +1,25 @@
+This program uses ARMv7-A Thumb instructions.
+Name this function "english_identity_destroy".
+Name register zero "sentinel or containing identity".
+Name register one "requested id or successor link".
+Name register two "predecessor link".
+Name register three "retired link marker".
+
+Push register four and the link register onto the descending stack.
+Call the function named "english_identity_find" and put the return address into the link register.
+Compare "sentinel or containing identity" with zero and update the condition flags.
+If the zero flag is one, replace the execution index with the instruction named "finish deletion".
+
+Load exactly four bytes from 28 bytes beyond the address in "sentinel or containing identity" into "requested id or successor link".
+Load exactly four bytes from 32 bytes beyond the address in "sentinel or containing identity" into "predecessor link".
+Store exactly four bytes from "predecessor link" at 4 bytes beyond the address in "requested id or successor link".
+Store exactly four bytes from "requested id or successor link" at 0 bytes beyond the address in "predecessor link".
+Put 256 into the low sixteen bits of "retired link marker" and zero into its high sixteen bits.
+Store exactly four bytes from "retired link marker" at 28 bytes beyond the address in "sentinel or containing identity".
+Put 290 into the low sixteen bits of "retired link marker" and zero into its high sixteen bits.
+Store exactly four bytes from "retired link marker" at 32 bytes beyond the address in "sentinel or containing identity".
+Call the function named "identity_release" and put the return address into the link register.
+
+Name the following instruction "finish deletion".
+Pop register four and the link register from the descending stack.
+Replace the execution index with the instruction address in the link register.

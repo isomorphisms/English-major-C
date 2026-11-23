@@ -128,13 +128,18 @@ def run_case(elf, function, case):
     return f'{function} {label}: result={actual:#x}\n  pc: ' + ' '.join(hex(pc) for pc in pcs) + f'\n  list reads: {trace}\n'
 
 
+def pinned_reference_source():
+    original = REFERENCE.read_bytes()
+    if hashlib.sha256(original).hexdigest() != '4a4b342b95a97f51db2f119a44cc97907378bc2b8f2efd7aea14970859c15019':
+        raise ValueError('Imported identity.c differs from the pinned specimen.')
+    return original
+
+
 def check(ndk, out):
     if 'Pkg.Revision = 27.2.12479018' not in (ndk / 'source.properties').read_text():
         raise ValueError('Task 12 uses NDK 27.2.12479018.')
     out.mkdir(parents=True, exist_ok=True)
-    original = REFERENCE.read_bytes()
-    if hashlib.sha256(original).hexdigest() != '4a4b342b95a97f51db2f119a44cc97907378bc2b8f2efd7aea14970859c15019':
-        raise ValueError('Imported identity.c differs from the pinned specimen.')
+    original = pinned_reference_source()
     excerpt = original[original.index(b'#define NAME_LEN'):original.index(b'/* CREATE */')]
     reference = out / 'reference.c'
     reference.write_bytes((HERE / 'reference-prefix.h').read_bytes() + excerpt + (HERE / 'reference-suffix.h').read_bytes())
