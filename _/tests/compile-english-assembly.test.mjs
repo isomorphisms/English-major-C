@@ -49,3 +49,14 @@ test('the program must have an explicit final return instruction', () => {
 test('a different architecture cannot silently replace the chosen machine', () => {
   assert.throws(() => compile(source.replace('ARMv7-A Thumb', 'x86-64')), /Declare the physical instruction set first/);
 });
+
+const identity = readFileSync(resolve(here, '../../arm/thumb/identity-find/identity-find.english'), 'utf8');
+test('Task 12 exports its own function and respects the T32 immediate widths', () => {
+  const output = compile(identity);
+  assert.match(output, /\.global english_identity_find/);
+  assert.match(output, /subw r12, r2, #28/);
+  assert.match(output, /ldr\.w r3, \[r12, #20\]/);
+  assert.throws(() => compile(identity.replace('Subtract 28', 'Subtract 4096')), /immediate/);
+  assert.throws(() => compile(identity.replace('20 bytes beyond', '4096 bytes beyond')), /offset/);
+  assert.throws(() => compile(identity.replace('english_identity_find', 'english_instruction_conflict')), /conflict/);
+});

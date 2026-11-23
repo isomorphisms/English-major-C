@@ -1,0 +1,25 @@
+This program uses ARMv7-A Thumb instructions.
+Name this function "english_identity_find".
+Name register zero "sentinel or returned identity".
+Name register one "requested id".
+Name register two "current link".
+Name register three "current id".
+Name register twelve "containing identity".
+
+Load exactly four bytes from the address in "sentinel or returned identity" into "current link".
+Name the following instruction "test for the sentinel".
+Compare "current link" with "sentinel or returned identity" and update the condition flags.
+If the zero flag is one, replace the execution index with the instruction named "return no identity".
+Subtract 28 from "current link" and put the result into "containing identity" without changing the condition flags.
+Load exactly four bytes from 20 bytes beyond the address in "containing identity" into "current id".
+Compare "current id" with "requested id" and update the condition flags.
+If the zero flag is one, replace the execution index with the instruction named "return the containing identity".
+Load exactly four bytes from the address in "current link" into "current link".
+Replace the execution index with the instruction named "test for the sentinel".
+
+Name the following instruction "return the containing identity".
+Copy "containing identity" into "sentinel or returned identity" without changing the condition flags.
+Replace the execution index with the instruction address in the link register.
+Name the following instruction "return no identity".
+Put zero into "sentinel or returned identity" without changing the condition flags.
+Replace the execution index with the instruction address in the link register.

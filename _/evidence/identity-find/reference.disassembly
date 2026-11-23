@@ -1,0 +1,22 @@
+
+reference.o:	file format elf32-littlearm
+
+Disassembly of section .text:
+
+00000000 <identity_find>:
+       0: f240 0100    	movw	r1, #0x0
+			00000000:  R_ARM_THM_MOVW_ABS_NC	identity_list
+       4: f2c0 0100    	movt	r1, #0x0
+			00000004:  R_ARM_THM_MOVT_ABS	identity_list
+       8: 460a         	mov	r2, r1
+       a: 6812         	ldr	r2, [r2]
+       c: 428a         	cmp	r2, r1
+       e: bf04         	itt	eq
+      10: 2000         	moveq	r0, #0x0
+      12: 4770         	bxeq	lr
+      14: f852 3c08    	ldr	r3, [r2, #-8]
+      18: 4283         	cmp	r3, r0
+      1a: bf04         	itt	eq
+      1c: f1a2 001c    	subeq.w	r0, r2, #0x1c
+      20: 4770         	bxeq	lr
+      22: e7f2         	b	0xa <identity_find+0xa> @ imm = #-0x1c
