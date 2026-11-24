@@ -133,6 +133,10 @@ jobs:
         run: |
           "$RUNNER_TEMP/list-trace-env/bin/python" -B _/tests/identity-find/check_destroy.py \
             "$NDK_ROOT" "$RUNNER_TEMP/identity-destroy"
+      - name: Verify Task 12 creation and allocation failure
+        run: |
+          "$RUNNER_TEMP/list-trace-env/bin/python" -B _/tests/identity-find/check_create.py \
+            "$NDK_ROOT" "$RUNNER_TEMP/identity-create"
       - name: Retain binaries and machine-instruction traces
         uses: actions/upload-artifact@v4
         with:
@@ -147,6 +151,7 @@ jobs:
             ${{ runner.temp }}/x86-64.trace
             ${{ runner.temp }}/identity-find/
             ${{ runner.temp }}/identity-destroy/
+            ${{ runner.temp }}/identity-create/
 
 # These freestanding binaries issue only Linux exit syscalls; no Bionic,
 # libc, Android APK or shared runtime is claimed. ARM harness is A32, while

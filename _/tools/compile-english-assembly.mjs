@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const physicalRegisterNumbers = new Map([
-  ['zero', 0], ['one', 1], ['two', 2], ['three', 3], ['twelve', 12],
+  ['zero', 0], ['one', 1], ['two', 2], ['three', 3], ['four', 4], ['five', 5], ['six', 6], ['twelve', 12],
 ]);
 
 function labelFor(name) {
@@ -61,7 +61,7 @@ export function compileEnglishToThumbAssembly(source) {
       functionName = match[1];
       continue;
     }
-    if ((match = /^Name register (zero|one|two|three|twelve) "([^"]+)"\.$/.exec(text))) {
+    if ((match = /^Name register (zero|one|two|three|four|five|six|twelve) "([^"]+)"\.$/.exec(text))) {
       if (!nextExpectedDeclaration) fail(line, 'Name registers before the first instruction.');
       const register = physicalRegisterNumbers.get(match[1]);
       if (allocatedRegisters.has(register) || registerNames.has(match[2]))
@@ -102,6 +102,16 @@ export function compileEnglishToThumbAssembly(source) {
       const offset = Number(match[2]);
       if (offset > 4095) fail(line, 'The Thumb word store needs an offset from 0 to 4095.');
       addInstruction(line, `str.w ${getRegister(match[1], line)}, [${getRegister(match[3], line)}, #${offset}]`, text);
+    } else if ((match = /^Load the byte at the address in "([^"]+)" into "([^"]+)" and zero its upper bits\.$/.exec(text))) {
+      addInstruction(line, `ldrb.w ${getRegister(match[2], line)}, [${getRegister(match[1], line)}]`, text);
+    } else if ((match = /^Store the low byte of "([^"]+)" at ([0-9]+) bytes beyond the address in "([^"]+)"\.$/.exec(text))) {
+      const offset = Number(match[2]);
+      if (offset > 4095) fail(line, 'The Thumb byte store needs an offset from 0 to 4095.');
+      addInstruction(line, `strb.w ${getRegister(match[1], line)}, [${getRegister(match[3], line)}, #${offset}]`, text);
+    } else if ((match = /^Add ([0-9]+) to "([^"]+)" and put the result into "([^"]+)" without changing the condition flags\.$/.exec(text))) {
+      const offset = Number(match[1]);
+      if (offset > 4095) fail(line, 'The Thumb wide addition needs an immediate from 0 to 4095.');
+      addInstruction(line, `addw ${getRegister(match[3], line)}, ${getRegister(match[2], line)}, #${offset}`, text);
     } else if ((match = /^Call the function named "([A-Za-z_][A-Za-z_0-9]*)" and put the return address into the link register\.$/.exec(text))) {
       if (match[1].startsWith('english_instruction_')) fail(line, 'Call a function, not a local instruction name.');
       addInstruction(line, `bl ${match[1]}`, text);
@@ -109,6 +119,10 @@ export function compileEnglishToThumbAssembly(source) {
       addInstruction(line, 'push {r4, lr}', text);
     } else if (text === 'Pop register four and the link register from the descending stack.') {
       addInstruction(line, 'pop.w {r4, lr}', text);
+    } else if (text === 'Push registers four through six and the link register onto the descending stack.') {
+      addInstruction(line, 'push {r4-r6, lr}', text);
+    } else if (text === 'Pop registers four through six and the link register from the descending stack.') {
+      addInstruction(line, 'pop.w {r4-r6, lr}', text);
     } else if ((match = /^Increase "([^"]+)" by four without changing the condition flags\.$/.exec(text))) {
       const register = getRegister(match[1], line);
       addInstruction(line, `add.w ${register}, ${register}, #4`, text);
