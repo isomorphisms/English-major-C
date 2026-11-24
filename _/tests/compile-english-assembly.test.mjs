@@ -73,3 +73,15 @@ test('Task 12 deletion lowers the two linked calls, preserving the return addres
   assert.throws(() => compile(destroy.replace('Put 290', 'Put 65536')), /halfword/);
   assert.throws(() => compile(destroy.replace('named "identity_release"', 'named "english_instruction_fake"')), /local instruction/);
 });
+
+const create = readFileSync(resolve(here, '../../arm/thumb/identity-create/identity-create.english'), 'utf8');
+test('Task 12 creation compiles byte accesses, checked offsets and the allocator call', () => {
+  const output = compile(create);
+  assert.match(output, /push \{r4-r6, lr\}/);
+  assert.match(output, /bl identity_allocate_kernel/);
+  assert.match(output, /ldrb\.w r12, \[r1\]/);
+  assert.match(output, /strb\.w r12, \[r0, #24\]/);
+  assert.match(output, /addw r3, r0, #28/);
+  assert.throws(() => compile(create.replace('at 24 bytes beyond', 'at 4096 bytes beyond')), /offset/);
+  assert.throws(() => compile(create.replace('Add 28 to', 'Add 4096 to')), /immediate/);
+});

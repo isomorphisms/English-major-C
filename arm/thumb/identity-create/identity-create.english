@@ -1,0 +1,69 @@
+This program uses ARMv7-A Thumb instructions.
+Name this function "english_identity_create".
+Name register zero "argument or allocated identity".
+Name register one "id argument or source cursor".
+Name register two "name argument or destination cursor".
+Name register three "remaining capacity or new link".
+Name register four "sentinel".
+Name register five "requested id".
+Name register six "original name".
+Name register twelve "byte value or old first link".
+
+Push registers four through six and the link register onto the descending stack.
+Copy "argument or allocated identity" into "sentinel" without changing the condition flags.
+Copy "id argument or source cursor" into "requested id" without changing the condition flags.
+Copy "name argument or destination cursor" into "original name" without changing the condition flags.
+Call the function named "english_identity_find" and put the return address into the link register.
+Compare "argument or allocated identity" with zero and update the condition flags.
+If the zero flag is one, replace the execution index with the instruction named "allocate an identity".
+Put 1 into the low sixteen bits of "argument or allocated identity" and zero into its high sixteen bits.
+Replace the execution index with the instruction named "return creation status".
+
+Name the following instruction "allocate an identity".
+Put 36 into the low sixteen bits of "argument or allocated identity" and zero into its high sixteen bits.
+Call the function named "identity_allocate_kernel" and put the return address into the link register.
+Compare "argument or allocated identity" with zero and update the condition flags.
+If the zero flag is one, replace the execution index with the instruction named "allocation failed".
+
+Put zero into "byte value or old first link" without changing the condition flags.
+Store exactly four bytes from "byte value or old first link" at 0 bytes beyond the address in "argument or allocated identity".
+Store exactly four bytes from "byte value or old first link" at 4 bytes beyond the address in "argument or allocated identity".
+Store exactly four bytes from "byte value or old first link" at 8 bytes beyond the address in "argument or allocated identity".
+Store exactly four bytes from "byte value or old first link" at 12 bytes beyond the address in "argument or allocated identity".
+Store exactly four bytes from "byte value or old first link" at 16 bytes beyond the address in "argument or allocated identity".
+Store the low byte of "byte value or old first link" at 24 bytes beyond the address in "argument or allocated identity".
+Store exactly four bytes from "requested id" at 20 bytes beyond the address in "argument or allocated identity".
+Copy "original name" into "id argument or source cursor" without changing the condition flags.
+Copy "argument or allocated identity" into "name argument or destination cursor" without changing the condition flags.
+Put 19 into the low sixteen bits of "remaining capacity or new link" and zero into its high sixteen bits.
+
+Name the following instruction "copy another name byte".
+Compare "remaining capacity or new link" with zero and update the condition flags.
+If the zero flag is one, replace the execution index with the instruction named "insert at the front".
+Load the byte at the address in "id argument or source cursor" into "byte value or old first link" and zero its upper bits.
+Compare "byte value or old first link" with zero and update the condition flags.
+If the zero flag is one, replace the execution index with the instruction named "insert at the front".
+Store the low byte of "byte value or old first link" at 0 bytes beyond the address in "name argument or destination cursor".
+Add 1 to "id argument or source cursor" and put the result into "id argument or source cursor" without changing the condition flags.
+Add 1 to "name argument or destination cursor" and put the result into "name argument or destination cursor" without changing the condition flags.
+Decrease "remaining capacity or new link" by one without changing the condition flags.
+Replace the execution index with the instruction named "copy another name byte".
+
+Name the following instruction "insert at the front".
+Add 28 to "argument or allocated identity" and put the result into "remaining capacity or new link" without changing the condition flags.
+Load exactly four bytes from the address in "sentinel" into "byte value or old first link".
+Store exactly four bytes from "remaining capacity or new link" at 4 bytes beyond the address in "byte value or old first link".
+Store exactly four bytes from "byte value or old first link" at 0 bytes beyond the address in "remaining capacity or new link".
+Store exactly four bytes from "sentinel" at 4 bytes beyond the address in "remaining capacity or new link".
+Store exactly four bytes from "remaining capacity or new link" at 0 bytes beyond the address in "sentinel".
+Copy "requested id" into "argument or allocated identity" without changing the condition flags.
+Copy "original name" into "id argument or source cursor" without changing the condition flags.
+Call the function named "identity_created" and put the return address into the link register.
+Put zero into "argument or allocated identity" without changing the condition flags.
+Replace the execution index with the instruction named "return creation status".
+
+Name the following instruction "allocation failed".
+Put 2 into the low sixteen bits of "argument or allocated identity" and zero into its high sixteen bits.
+Name the following instruction "return creation status".
+Pop registers four through six and the link register from the descending stack.
+Replace the execution index with the instruction address in the link register.

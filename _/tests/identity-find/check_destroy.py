@@ -7,7 +7,7 @@ from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE, UC_PROT_NONE
 from unicorn.arm_const import (UC_ARM_REG_LR, UC_ARM_REG_PC, UC_ARM_REG_R0,
                                UC_ARM_REG_R1, UC_ARM_REG_R4, UC_ARM_REG_SP)
 from check import (HERE, ROOT, PROGRAM, FLAGS, STOP, STACK, NODES, command, load,
-                   pinned_reference_source)
+                   pinned_reference_source, compile_english)
 
 DESTROY = ROOT / 'arm/thumb/identity-destroy'
 CASES = (
@@ -16,17 +16,6 @@ CASES = (
     ('middle, first, last', [17, 0xffffffff, 3], [0xffffffff, 17, 3]),
     ('last then first duplicate', [8, 8, 11], [11, 8, 8, 8]),
 )
-
-
-def compile_english(ndk_bin, source, out, name):
-    assembly = out / (name + '.s')
-    command(['node', ROOT / '_/tools/compile-english-assembly.mjs', source, assembly])
-    if source.parent in (PROGRAM, DESTROY):
-        if assembly.read_bytes() != (source.parent / 'generated-thumb.s').read_bytes():
-            raise ValueError(f'Regenerate {source.parent.name} assembly.')
-    obj = out / (name + '.o')
-    command([ndk_bin / 'clang', *FLAGS, '-c', assembly, '-o', obj])
-    return obj
 
 
 def build_reference(ndk_bin, out):

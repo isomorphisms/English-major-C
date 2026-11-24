@@ -36,3 +36,5 @@ The [Task 12 lookup](../arm/thumb/identity-find/) now has an English program,
 Thumb assembly and an emulated search trace.
 Its [deletion companion](../arm/thumb/identity-destroy/) checks which links
 change and which containing identity reaches the release callback.
+The [creation companion](../arm/thumb/identity-create/) checks allocation
+failure, duplicate IDs, bounded name storage and front insertion.

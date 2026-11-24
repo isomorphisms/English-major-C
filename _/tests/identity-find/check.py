@@ -36,6 +36,17 @@ def command(arguments, receipt=None):
     return result.stdout
 
 
+def compile_english(ndk_bin, source, out, name):
+    assembly = out / (name + '.s')
+    command(['node', ROOT / '_/tools/compile-english-assembly.mjs', source, assembly])
+    if source.is_relative_to(ROOT / 'arm/thumb'):
+        if assembly.read_bytes() != (source.parent / 'generated-thumb.s').read_bytes():
+            raise ValueError(f'Regenerate {source.parent.name} assembly.')
+    obj = out / (name + '.o')
+    command([ndk_bin / 'clang', *FLAGS, '-c', assembly, '-o', obj])
+    return obj
+
+
 def build(ndk, out, source, name):
     bin_dir = ndk / 'toolchains/llvm/prebuilt/linux-x86_64/bin'
     clang = bin_dir / 'clang'
